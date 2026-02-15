@@ -1,0 +1,41 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can only read/write their own user document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // Projects subcollection
+      match /projects/{projectId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+
+        // Project shares
+        match /shares/{shareId} {
+          allow read, write: if request.auth != null && request.auth.uid == userId;
+        }
+      }
+
+      // Tasks subcollection
+      match /tasks/{taskId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+
+        // Task shares
+        match /shares/{shareId} {
+          allow read, write: if request.auth != null && request.auth.uid == userId;
+        }
+      }
+
+      // Time entries subcollection
+      match /timeEntries/{entryId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // Shared access — users can read entries shared with them
+    match /sharedAccess/{docId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.sharedWithUid;
+      allow create, update, delete: if request.auth != null && request.auth.uid == resource.data.ownerUid;
+    }
+  }
+}

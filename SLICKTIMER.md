@@ -43,6 +43,7 @@ The demo of the original SlimTimer is here: https://www.youtube.com/watch?v=Ceed
   - [Tailwind v4 theming](#tailwind-v4-theming)
   - [Routing and navigation](#routing-and-navigation)
   - [Key implementation decisions](#key-implementation-decisions)
+  - [Firebase console setup (before coding)](#firebase-console-setup-before-coding)
 
 ## Features overview
 
@@ -571,3 +572,15 @@ Navigation is a minimal top bar component (`Nav.svelte`). It's implemented as a 
 5. **PWA via @vite-pwa/sveltekit** — Zero-config Workbox service worker for offline caching and auto-updates.
 6. **Client-side only Firebase** — No `firebase-admin` dependency. All Firestore reads/writes happen via the client SDK with security enforced by Firestore rules.
 7. **Firestore offline persistence** — `enablePersistence()` is called once at startup. Combined with `onSnapshot` listeners, the app works offline and syncs automatically.
+
+### Firebase console setup (before coding)
+
+Complete these steps in the [Firebase console](https://console.firebase.google.com) before scaffolding:
+
+1. **Create project** — Click "Add project", name it `slicktimer`, disable Google Analytics (not needed).
+2. **Register a Web App** — Project Settings (gear) → "Your apps" → web icon (`</>`). Nickname: `SlickTimer`. Check "Also set up Firebase Hosting". Copy the `firebaseConfig` values into `.env` (see [Key configuration files](#key-configuration-files)).
+3. **Enable Authentication** — Go to Authentication → Sign-in method. Enable **Email/Password** and **Google** (set a project support email). Additional providers (GitHub, Microsoft, Apple, etc.) can be added later.
+4. **Create Firestore database** — Go to Firestore Database → Create database. Choose a region close to your users (cannot be changed later). Start in **test mode** (proper security rules are written during implementation).
+5. **Install Firebase CLI** — Run `npm install -g firebase-tools` and `firebase login`. The `firebase init` command is run after project scaffolding to link the project.
+
+Not needed at this stage: Cloud Functions, Firebase Storage, Realtime Database, manual Firestore collection creation (the app creates collections on first write).

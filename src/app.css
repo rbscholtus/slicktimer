@@ -1,0 +1,16 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/forms';
+
+@theme {
+	--color-primary: #4a90d9;
+	--color-primary-hover: #3a7bc8;
+	--color-timer-active: #5cb85c;
+	--color-timer-stopped: #d9534f;
+	--color-notification: #e8943a;
+	--color-bg-primary: #ffffff;
+	--color-bg-alt: #f7f8fa;
+	--color-bg-edit: #eef7ee;
+	--color-text-primary: #1a1a1a;
+	--color-text-secondary: #6b7280;
+	--color-border: #d1d5db;
+}
