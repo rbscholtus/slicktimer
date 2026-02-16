@@ -1,6 +1,11 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
+import {
+	initializeFirestore,
+	getFirestore,
+	persistentLocalCache,
+	persistentMultipleTabManager
+} from 'firebase/firestore';
 import {
 	PUBLIC_FIREBASE_API_KEY,
 	PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -23,7 +28,15 @@ const firebaseConfig = {
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
-export const db = getFirestore(app);
 
-// Enable offline persistence (call once)
-enableIndexedDbPersistence(db).catch(() => {});
+// initializeFirestore sets up offline persistence. On HMR it throws because
+// Firestore is already initialized — fall back to getFirestore() in that case.
+let db;
+try {
+	db = initializeFirestore(app, {
+		localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+	});
+} catch {
+	db = getFirestore(app);
+}
+export { db };

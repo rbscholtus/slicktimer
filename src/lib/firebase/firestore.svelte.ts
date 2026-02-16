@@ -2,10 +2,8 @@ import {
 	onSnapshot,
 	doc,
 	collection,
-	query,
 	type DocumentData,
-	type Query,
-	type DocumentReference
+	type Query
 } from 'firebase/firestore';
 import { db } from './config';
 
@@ -37,6 +35,28 @@ export function useCollection<T = DocumentData>(path: string) {
 
 	$effect(() => {
 		const unsub = onSnapshot(collection(db, path), (snap) => {
+			data = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as T);
+			loading = false;
+		});
+		return unsub;
+	});
+
+	return {
+		get data() {
+			return data;
+		},
+		get loading() {
+			return loading;
+		}
+	};
+}
+
+export function useQuery<T = DocumentData>(q: Query) {
+	let data = $state<T[]>([]);
+	let loading = $state(true);
+
+	$effect(() => {
+		const unsub = onSnapshot(q, (snap) => {
 			data = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as T);
 			loading = false;
 		});

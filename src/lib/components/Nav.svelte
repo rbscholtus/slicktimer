@@ -15,7 +15,7 @@
 </script>
 
 <nav class="border-b border-border px-2 py-1">
-	<div class="mx-auto flex max-w-xs items-center justify-between">
+	<div class="flex items-center justify-between">
 		<div class="flex gap-3">
 			{#each links as link}
 				<a

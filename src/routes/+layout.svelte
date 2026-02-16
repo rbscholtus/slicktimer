@@ -21,7 +21,7 @@
 	</div>
 {:else if user.current}
 	<Nav />
-	<main class="mx-auto max-w-xs p-2">
+	<main class="flex w-full flex-col overflow-hidden" style="height: calc(100dvh - 34px)">
 		{@render children()}
 	</main>
 {:else}
