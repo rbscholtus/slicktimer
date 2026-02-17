@@ -3,6 +3,9 @@
     "markdown.extension.toc.omittedFromToc": {
         "SLICKTIMER.md": [
             "## Table of Contents"
+        ],
+        "TESTING.md": [
+            "## Table of Contents"
         ]
     }
 }

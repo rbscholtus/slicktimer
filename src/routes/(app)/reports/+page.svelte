@@ -65,11 +65,11 @@
 	const dateRange = $derived(getDateRange(preset));
 
 	// Load projects and tasks
-	const projects = $derived(uid ? useCollection<Project>(`users/${uid}/projects`) : { data: [] as Project[], loading: true });
-	const tasks = $derived(uid ? useCollection<Task>(`users/${uid}/tasks`) : { data: [] as Task[], loading: true });
+	const projects = useCollection<Project>(() => uid ? `users/${uid}/projects` : null);
+	const tasks = useCollection<Task>(() => uid ? `users/${uid}/tasks` : null);
 
 	// Query entries for date range
-	const entriesQuery = $derived(
+	const entries = useQuery<TimeEntry>(() =>
 		uid
 			? query(
 					collection(db, `users/${uid}/timeEntries`),
@@ -79,7 +79,6 @@
 				)
 			: null
 	);
-	const entries = $derived(entriesQuery ? useQuery<TimeEntry>(entriesQuery) : { data: [] as TimeEntry[], loading: true });
 
 	// Lookup maps
 	const projectMap = $derived(Object.fromEntries(projects.data.map((p) => [p.id, p])));

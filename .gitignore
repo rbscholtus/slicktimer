@@ -32,3 +32,4 @@ ui-debug.log
 # Firebase service account keys (never commit these)
 **/serviceAccountKey*.json
 **/firebase-adminsdk*.json
+/slimtimer_pages/

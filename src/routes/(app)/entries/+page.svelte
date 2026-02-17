@@ -29,20 +29,34 @@
 		return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 	}
 
-	function formatTime(ts: Timestamp): string {
+	function formatTimeHHMM(ts: Timestamp): string {
 		const d = ts.toDate();
-		return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+		const h = String(d.getHours()).padStart(2, '0');
+		const m = String(d.getMinutes()).padStart(2, '0');
+		return `${h}:${m}`;
+	}
+
+	/** Parse HH:MM string into a Date for the selected day */
+	function parseTimeToDate(timeStr: string): Date | null {
+		const parts = timeStr.split(':');
+		if (parts.length < 2) return null;
+		const h = parseInt(parts[0], 10);
+		const m = parseInt(parts[1], 10);
+		if (isNaN(h) || isNaN(m)) return null;
+		if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+		const d = new Date(`${selectedDate}T00:00:00`);
+		d.setHours(h, m, 0, 0);
+		return d;
 	}
 
 	// Load projects and tasks for name lookups
-	const projects = $derived(uid ? useCollection<Project>(`users/${uid}/projects`) : { data: [] as Project[], loading: true });
-	const tasks = $derived(uid ? useCollection<Task>(`users/${uid}/tasks`) : { data: [] as Task[], loading: true });
+	const projects = useCollection<Project>(() => uid ? `users/${uid}/projects` : null);
+	const tasks = useCollection<Task>(() => uid ? `users/${uid}/tasks` : null);
 
 	// Query entries for selected date
-	const entriesQuery = $derived(
+	const entries = useQuery<TimeEntry>(() =>
 		uid ? query(collection(db, `users/${uid}/timeEntries`), where('date', '==', selectedDate), orderBy('startTime', 'asc')) : null
 	);
-	const entries = $derived(entriesQuery ? useQuery<TimeEntry>(entriesQuery) : { data: [] as TimeEntry[], loading: true });
 
 	// Lookup maps
 	const projectMap = $derived(
@@ -64,27 +78,45 @@
 	let editStart = $state('');
 	let editEnd = $state('');
 	let editComment = $state('');
+	let editError = $state('');
 
 	function startEdit(entry: TimeEntry) {
 		editingId = entry.id;
-		editStart = formatTime(entry.startTime);
-		editEnd = entry.endTime ? formatTime(entry.endTime) : '';
+		editStart = formatTimeHHMM(entry.startTime);
+		editEnd = entry.endTime ? formatTimeHHMM(entry.endTime) : '';
 		editComment = entry.comment || '';
+		editError = '';
 	}
 
 	function cancelEdit() {
 		editingId = null;
+		editError = '';
 	}
 
 	async function saveEdit(entry: TimeEntry) {
 		if (!uid) return;
-		const ref = doc(db, `users/${uid}/timeEntries`, entry.id);
-		const startDate = new Date(`${selectedDate}T${editStart}:00`);
-		const endDate = editEnd ? new Date(`${selectedDate}T${editEnd}:00`) : null;
+		editError = '';
+
+		const startDate = parseTimeToDate(editStart);
+		if (!startDate) {
+			editError = 'Invalid start time.';
+			return;
+		}
+
+		const endDate = editEnd ? parseTimeToDate(editEnd) : null;
+		if (editEnd && !endDate) {
+			editError = 'Invalid end time.';
+			return;
+		}
+
 		const duration = endDate ? Math.floor((endDate.getTime() - startDate.getTime()) / 1000) : 0;
 
-		if (endDate && duration < 10) return; // enforce minimum
+		if (endDate && duration < 10) {
+			editError = 'Duration must be at least 10 seconds.';
+			return;
+		}
 
+		const ref = doc(db, `users/${uid}/timeEntries`, entry.id);
 		await updateDoc(ref, {
 			startTime: Timestamp.fromDate(startDate),
 			endTime: endDate ? Timestamp.fromDate(endDate) : null,
@@ -110,17 +142,49 @@
 	let newStart = $state('');
 	let newEnd = $state('');
 	let newComment = $state('');
+	let newError = $state('');
+
+	function cancelNewEntry() {
+		showNewForm = false;
+		newError = '';
+	}
 
 	async function saveNewEntry() {
-		if (!uid || !newTaskId || !newStart || !newEnd) return;
+		if (!uid) return;
+		newError = '';
+
+		if (!newTaskId) {
+			newError = 'Please select a task.';
+			return;
+		}
+		if (!newStart || !newEnd) {
+			newError = 'Please enter start and end times.';
+			return;
+		}
+
 		const task = taskMap[newTaskId];
-		if (!task) return;
+		if (!task) {
+			newError = 'Selected task not found.';
+			return;
+		}
 
-		const startDate = new Date(`${selectedDate}T${newStart}:00`);
-		const endDate = new Date(`${selectedDate}T${newEnd}:00`);
+		const startDate = parseTimeToDate(newStart);
+		if (!startDate) {
+			newError = 'Invalid start time.';
+			return;
+		}
+
+		const endDate = parseTimeToDate(newEnd);
+		if (!endDate) {
+			newError = 'Invalid end time.';
+			return;
+		}
+
 		const duration = Math.floor((endDate.getTime() - startDate.getTime()) / 1000);
-
-		if (duration < 10) return; // enforce minimum
+		if (duration < 10) {
+			newError = 'Duration must be at least 10 seconds.';
+			return;
+		}
 
 		await addDoc(collection(db, `users/${uid}/timeEntries`), {
 			taskId: newTaskId,
@@ -141,6 +205,7 @@
 		newStart = '';
 		newEnd = '';
 		newComment = '';
+		newError = '';
 	}
 
 	// Active tasks for the new entry form
@@ -162,14 +227,16 @@
 	</div>
 
 	<!-- New entry button -->
-	<div class="pb-2">
-		<button
-			onclick={() => (showNewForm = !showNewForm)}
-			class="text-sm text-primary hover:underline"
-		>
-			{showNewForm ? 'Cancel' : '+ New Entry'}
-		</button>
-	</div>
+	{#if !showNewForm}
+		<div class="pb-2">
+			<button
+				onclick={() => { showNewForm = true; newError = ''; }}
+				class="text-sm text-primary hover:underline"
+			>
+				+ New Entry
+			</button>
+		</div>
+	{/if}
 
 	<!-- New entry form -->
 	{#if showNewForm}
@@ -181,10 +248,18 @@
 						<option value={task.id}>{task.name} ({projectMap[task.projectId]?.name ?? ''})</option>
 					{/each}
 				</select>
-				<div class="flex gap-2">
-					<input type="time" bind:value={newStart} class="border border-border px-1 py-0.5 text-sm" />
+				<div class="flex items-center gap-2">
+					<input
+						type="time"
+						bind:value={newStart}
+						class="border border-border px-1 py-0.5 text-sm font-mono"
+					/>
 					<span class="text-sm text-text-secondary">to</span>
-					<input type="time" bind:value={newEnd} class="border border-border px-1 py-0.5 text-sm" />
+					<input
+						type="time"
+						bind:value={newEnd}
+						class="border border-border px-1 py-0.5 text-sm font-mono"
+					/>
 				</div>
 				<input
 					type="text"
@@ -192,12 +267,20 @@
 					placeholder="Comment (optional)"
 					class="w-full border border-border px-1 py-0.5 text-sm"
 				/>
-				<button
-					onclick={saveNewEntry}
-					class="bg-primary px-2 py-0.5 text-sm text-white hover:bg-primary/90"
-				>
-					Save
-				</button>
+				{#if newError}
+					<p class="text-xs text-timer-stopped">{newError}</p>
+				{/if}
+				<div class="flex gap-2">
+					<button
+						onclick={saveNewEntry}
+						class="bg-primary px-2 py-0.5 text-sm text-white hover:bg-primary/90"
+					>
+						Save
+					</button>
+					<button onclick={cancelNewEntry} class="text-sm text-text-secondary hover:text-text-primary">
+						Cancel
+					</button>
+				</div>
 			</div>
 		</div>
 	{/if}
@@ -214,10 +297,18 @@
 					{#if editingId === entry.id}
 						<!-- Edit mode -->
 						<div class="bg-bg-edit p-1.5 space-y-1">
-							<div class="flex gap-2 items-center">
-								<input type="time" bind:value={editStart} class="border border-border px-1 py-0.5 text-sm" />
+							<div class="flex items-center gap-2">
+								<input
+									type="time"
+									bind:value={editStart}
+									class="border border-border px-1 py-0.5 text-sm font-mono"
+								/>
 								<span class="text-sm text-text-secondary">to</span>
-								<input type="time" bind:value={editEnd} class="border border-border px-1 py-0.5 text-sm" />
+								<input
+									type="time"
+									bind:value={editEnd}
+									class="border border-border px-1 py-0.5 text-sm font-mono"
+								/>
 							</div>
 							<input
 								type="text"
@@ -225,6 +316,9 @@
 								placeholder="Comment"
 								class="w-full border border-border px-1 py-0.5 text-sm"
 							/>
+							{#if editError}
+								<p class="text-xs text-timer-stopped">{editError}</p>
+							{/if}
 							<div class="flex gap-2">
 								<button onclick={() => saveEdit(entry)} class="bg-primary px-2 py-0.5 text-sm text-white">Save</button>
 								<button onclick={cancelEdit} class="text-sm text-text-secondary hover:text-text-primary">Cancel</button>
@@ -242,10 +336,10 @@
 						<div class="flex items-start justify-between px-1">
 							<div class="min-w-0 flex-1">
 								<div class="text-sm text-text-primary">
-									<span class="font-mono">{formatTime(entry.startTime)}</span>
+									<span class="font-mono">{formatTimeHHMM(entry.startTime)}</span>
 									{#if entry.endTime}
 										<span class="text-text-secondary"> – </span>
-										<span class="font-mono">{formatTime(entry.endTime)}</span>
+										<span class="font-mono">{formatTimeHHMM(entry.endTime)}</span>
 										<span class="ml-1 text-text-secondary">({formatDurationShort(entry.duration)})</span>
 									{:else}
 										<span class="ml-1 text-timer-active">(running)</span>

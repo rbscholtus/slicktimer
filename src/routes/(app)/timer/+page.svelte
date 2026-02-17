@@ -24,12 +24,11 @@
 	});
 
 	// Load data from Firestore (guarded — uid is '' until auth resolves)
-	const projects = $derived(uid ? useCollection<Project>(`users/${uid}/projects`) : { data: [] as Project[], loading: true });
-	const tasks = $derived(uid ? useCollection<Task>(`users/${uid}/tasks`) : { data: [] as Task[], loading: true });
-	const todayQuery = $derived(
+	const projects = useCollection<Project>(() => uid ? `users/${uid}/projects` : null);
+	const tasks = useCollection<Task>(() => uid ? `users/${uid}/tasks` : null);
+	const todayEntries = useQuery<TimeEntry>(() =>
 		uid ? query(collection(db, `users/${uid}/timeEntries`), where('date', '==', todayDateString())) : null
 	);
-	const todayEntries = $derived(todayQuery ? useQuery<TimeEntry>(todayQuery) : { data: [] as TimeEntry[], loading: true });
 
 	// Group active + today-completed tasks by project
 	const today = todayDateString();

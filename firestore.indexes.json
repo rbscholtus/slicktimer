@@ -1,0 +1,13 @@
+{
+	"indexes": [
+		{
+			"collectionGroup": "timeEntries",
+			"queryScope": "COLLECTION",
+			"fields": [
+				{ "fieldPath": "date", "order": "ASCENDING" },
+				{ "fieldPath": "startTime", "order": "ASCENDING" }
+			]
+		}
+	],
+	"fieldOverrides": []
+}

@@ -37,6 +37,8 @@ src/
       +layout.svelte            # Auth guard + Nav for authenticated pages
       timer/+page.svelte        # Main timer screen
       entries/+page.svelte      # Edit time entries
+      tasks/+page.svelte        # Tasks management (stub)
+      projects/+page.svelte     # Projects management (stub)
       reports/+page.svelte      # Reports (pivot table, timesheet)
 static/                         # PWA icons, favicon
 firestore.rules                 # Firestore security rules
@@ -77,4 +79,4 @@ firebase deploy                # Deploy to Firebase Hosting
 - Keep the UI slim and narrow (designed to sit alongside other windows). Avoid wide layouts.
 - Minimum time entry duration is 10 seconds — discard anything shorter.
 - No SSR — `export const ssr = false` in the root layout. All Firebase interaction is client-side.
-- When changes are made, always update SLICKTIMER.md to reflect the changes. The changes to be made include the documented behavior of the app, the design, and the test cases.
+- When changes are made, always update SLICKTIMER.md to reflect the changes. The changes to be made include the documented behavior of the app, the design, and the test cases. Test cases live in [TESTING.md](TESTING.md).

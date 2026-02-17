@@ -1,4 +1,9 @@
 <script lang="ts">
+	import Nav from '$lib/components/Nav.svelte';
+	import { getUser } from '$lib/firebase/auth.svelte';
+
+	const user = getUser();
+
 	function openTimer() {
 		window.open('/timer', 'slicktimer', 'width=300,height=640,resizable=yes');
 	}
@@ -8,15 +13,28 @@
 	<title>SlickTimer</title>
 </svelte:head>
 
-<div class="mx-auto max-w-lg px-6 py-8">
-	<div class="flex items-center justify-between">
-		<h1 class="text-lg font-semibold text-text-primary">SlickTimer</h1>
-		<button onclick={openTimer} class="text-sm text-primary hover:underline">
-			Open Timer &rarr;
-		</button>
-	</div>
+<!-- Nav bar: adapts to login state -->
+{#if user.current}
+	<Nav />
+{:else}
+	<nav class="bg-nav-bar px-2 py-0">
+		<div class="flex items-center justify-between">
+			<div class="flex">
+				<span class="border-x border-t border-nav-hover bg-nav-active-bg px-1.5 py-0.5 text-sm text-nav-active-text">
+					Home
+				</span>
+			</div>
+			<a href="/login" class="px-1.5 py-0.5 text-sm text-nav-text hover:bg-nav-hover hover:text-primary">
+				Login
+			</a>
+		</div>
+	</nav>
+{/if}
 
-	<div class="mt-8">
+<div class="mx-auto max-w-lg px-6 py-8">
+	<h1 class="text-lg font-semibold text-primary">SlickTimer</h1>
+
+	<div class="mt-6">
 		<h2 class="text-base font-semibold text-text-primary">Getting Started</h2>
 		<ol class="mt-4 list-inside list-decimal space-y-3 text-sm text-text-secondary">
 			<li>
@@ -35,9 +53,5 @@
 				you goofed. If you have any more questions check out the help or drop me a line.
 			</li>
 		</ol>
-	</div>
-
-	<div class="mt-8 border-t border-border pt-4">
-		<a href="/login" class="text-sm text-primary hover:underline">Sign In / Sign Up</a>
 	</div>
 </div>
