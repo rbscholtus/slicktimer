@@ -21,7 +21,7 @@
 			} else {
 				await signInWithEmailAndPassword(auth, email, password);
 			}
-			goto('/');
+			goto('/timer');
 		} catch (e: any) {
 			error = e.message;
 		}
@@ -31,7 +31,7 @@
 		error = '';
 		try {
 			await signInWithPopup(auth, new GoogleAuthProvider());
-			goto('/');
+			goto('/timer');
 		} catch (e: any) {
 			error = e.message;
 		}

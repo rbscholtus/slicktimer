@@ -11,7 +11,8 @@ The demo of the original SlimTimer is here: https://www.youtube.com/watch?v=Ceed
 - [Architecture](#architecture)
 - [Features and UI](#features-and-ui)
   - [Authentication](#authentication)
-  - [Main screen](#main-screen)
+  - [Home page](#home-page)
+  - [Timer screen](#timer-screen)
   - [Task management](#task-management)
   - [Tags](#tags)
   - [Edit Time Entries screen](#edit-time-entries-screen)
@@ -81,10 +82,22 @@ The demo of the original SlimTimer is here: https://www.youtube.com/watch?v=Ceed
 - Firebase Auth supports login with email/password, as well as social logins: Google, Microsoft, LinkedIn, X/Twitter, GitHub, Apple.
 - New users simply log in, and an account is automatically created for them (Firebase Auth handles this).
 - Each authenticated user gets their own isolated data space (user document in Firestore).
+- After login, users are redirected to `/timer`.
 
-### Main screen
+### Home page
 
-- **Layout**: Slim, narrow format designed to sit alongside other windows on the user's screen. The screen is split into three vertical zones: (1) the big timer at top, (2) the scrollable task list in the middle, and (3) the Add Task / Add Project forms fixed at the bottom of the viewport.
+- **Route**: `/` — public, no authentication required.
+- **Purpose**: Landing page for slicktimer.com with static information about the app.
+- **Layout**: Centered content with `max-w-lg`, not using the Nav bar.
+- **"Open Timer" button**: Opens the timer app at `/timer` in a slim popup window (`width=300, height=640, resizable=yes`) using `window.open()`. Users can bookmark this link to launch the timer directly.
+- **Getting Started section**: Step-by-step instructions explaining how to use SlickTimer (bookmark the timer, click tasks to track time, close the window safely, etc.).
+- **Sign In link**: Links to `/login` for users who want to sign in or create an account.
+- **No Firebase dependency**: The home page is completely static — no auth state, no Firestore calls.
+
+### Timer screen
+
+- **Route**: `/timer` — requires authentication. Redirects to `/login` if not authenticated.
+- **Layout**: Slim, narrow format designed to sit alongside other windows on the user's screen. Ideally launched from the Home page into a slim browser window. When installed as a PWA, this is the primary app window. The screen is split into three vertical zones: (1) the big timer at top, (2) the scrollable task list in the middle, and (3) the Add Task / Add Project forms fixed at the bottom of the viewport.
 - **Big timer (daily total)**: The large clock readout at the top shows the **total time logged today** (sum of all completed time entries plus the currently running timer). It is green when a timer is running, grey when idle. In pomodoro mode, it shows the countdown instead.
 - **Active task name**: The browser window title updates to `[HH:MM:SS] Task Name - SlickTimer` while a timer is running, so the user can see what they're timing at a glance from the taskbar/dock. Resets to `SlickTimer` when stopped.
 - **Play/Pause button**: A play/pause icon button sits next to the big timer clock. When the timer is running, clicking it stops the timer. When stopped and there is an active task (one that was previously running this session), clicking it restarts timing that task. Disabled (greyed out) when there is no active task — e.g. on a fresh session before any task has been started, or when the last active task has been completed or archived.
@@ -139,22 +152,31 @@ The demo of the original SlimTimer is here: https://www.youtube.com/watch?v=Ceed
 
 ### Edit Time Entries screen
 
-- Shows all time entries for the selected day in chronological order.
-- Each time entry displays: task name, project, start time, end time, duration, tags, and comment.
-- Users can edit all fields of a time entry: start time, end time, tags, and comment.
-- Users can manually create new time entries for past work (selecting task, start/end time, tags, comment).
-- Users can delete time entries.
+- **Route**: `/entries` — requires authentication.
+- **Date picker**: Header row with previous/next day arrows and the current date displayed as a readable string (e.g. "Mon, Feb 16, 2026"). Defaults to today.
+- Shows all time entries for the selected day in chronological order (sorted by `startTime`).
+- Each time entry displays: start time, end time, duration, task name, project name, tags (as `#tag`), and comment.
+- **Zebra striping**: Alternating row backgrounds (`bg-primary` / `bg-alt`) for readability.
+- **Edit**: Each entry has an "Edit" button. Clicking it shows an inline edit form (with `bg-edit` background). Editable fields: start time (`input type=time`), end time (`input type=time`), and comment. Duration auto-calculates from start/end. Tags editing will be added later.
+- **Delete**: Each entry has a "Del" button. Clicking it shows an inline "Delete this entry?" confirmation (Yes/No) — no modal.
+- **New entry**: A "+ New Entry" button at the top opens an inline form (with `bg-edit` background). Fields: task (select from active tasks list, showing task name and project), start time, end time, comment. Tags are inherited from the selected task.
+- **Minimum duration**: When saving an edit or new entry, entries with duration < 10 seconds are rejected.
+- **Daily total**: Footer row showing the sum of all completed entry durations for the day.
+- **Running entries**: Entries with `endTime: null` are shown with a "(running)" indicator instead of an end time. They are not editable.
 - Time entries shorter than 10 seconds are not shown (they are discarded at creation time).
 
 ### Reporting screen
 
+- **Route**: `/reports` — requires authentication.
+- **Report type toggle**: Button group to switch between Pivot Table (default) and Timesheet views.
 - **Report types**:
-  - **Pivot table**: User configures what appears on rows and columns. Options for rows/columns include: project, task, tag, and date. Cell values show total hours.
-  - **Timesheet**: A chronological list of time entries showing task, project, start, end, duration, tags, and comment.
-- **Time frame presets**: Today, This Week, Last Week, This Month, Last Month. Custom date range is also supported.
-- **Filters**: By project, by tag, by task. Multiple filters can be combined.
+  - **Pivot table** (default): User configures what appears on rows and columns via two dropdown selects. Options for rows/columns include: project, task, and date. Cell values show total hours in `H:MM` format. Includes row totals, column totals, and grand total. Zebra-striped rows.
+  - **Timesheet**: A chronological table of time entries showing time range, task, project, and duration. Tags and comments are shown in a sub-row below entries that have them. Includes a total at the bottom. Zebra-striped rows.
+- **Time frame presets**: Today, This Week, Last Week, This Month, Last Month — displayed as a button group. Custom date range shows two date inputs.
+- **Filters**: Project and tag dropdown selects. Default to "All". Filtering is client-side on loaded data.
+- **Data loading**: Queries `timeEntries` where `date >= startDate && date <= endDate`. Re-queries when date range changes. Tasks and projects are loaded via `useCollection` for name lookups.
 - **Shared data**: Reporters with access to shared tasks/projects can see individual time entries from all users who logged time against those tasks.
-- **Export**: Reports can be exported to CSV.
+- **Export**: CSV export button generates a CSV file client-side (using Blob URL) and triggers a browser download. Includes columns: Date, Task, Project, Start, End, Duration, Tags, Comment.
 
 ## Visual design and styling
 
@@ -366,16 +388,20 @@ slicktimer/
 │   ├── app.html                    # HTML shell template
 │   ├── app.css                     # Tailwind entry + @theme tokens
 │   ├── routes/
-│   │   ├── +layout.svelte          # Root layout (imports app.css, auth guard)
+│   │   ├── +layout.svelte          # Root layout (imports app.css only, no auth)
 │   │   ├── +layout.ts              # Disables SSR (export const ssr = false)
-│   │   ├── +page.svelte            # Main timer screen (home)
+│   │   ├── +page.svelte            # Public Home page (no auth required)
 │   │   ├── +error.svelte           # Error page
 │   │   ├── login/
 │   │   │   └── +page.svelte        # Login/signup screen
-│   │   ├── entries/
-│   │   │   └── +page.svelte        # Edit time entries screen
-│   │   └── reports/
-│   │       └── +page.svelte        # Reporting screen
+│   │   └── (app)/                  # Route group for authenticated pages
+│   │       ├── +layout.svelte      # Auth guard + Nav bar
+│   │       ├── timer/
+│   │       │   └── +page.svelte    # Timer screen
+│   │       ├── entries/
+│   │       │   └── +page.svelte    # Edit time entries screen
+│   │       └── reports/
+│   │           └── +page.svelte    # Reporting screen
 │   └── lib/
 │       ├── firebase/
 │       │   ├── config.ts           # Firebase app initialization
@@ -444,7 +470,7 @@ export default defineConfig({
       manifest: {
         name: 'SlickTimer',
         short_name: 'SlickTimer',
-        start_url: '/',
+        start_url: '/timer',
         display: 'standalone',
         background_color: '#ffffff',
         theme_color: '#4a90d9',
@@ -588,14 +614,17 @@ To switch themes, only these values need to change. The markup stays the same.
 
 ### Routing and navigation
 
-| Route      | Page         | Description                                          |
-| ---------- | ------------ | ---------------------------------------------------- |
-| `/`        | Main screen  | Timer sidebar: task list, timer display, daily total |
-| `/login`   | Login        | Firebase Auth login (email + social providers)       |
-| `/entries` | Edit entries | Day view of time entries with inline editing         |
-| `/reports` | Reports      | Pivot table and timesheet with filters               |
+| Route      | Page         | Auth required | Description                                            |
+| ---------- | ------------ | ------------- | ------------------------------------------------------ |
+| `/`        | Home         | No            | Public landing page with "Open Timer" link             |
+| `/login`   | Login        | No            | Firebase Auth login (email + social providers)         |
+| `/timer`   | Timer        | Yes           | Timer sidebar: task list, timer display, daily total   |
+| `/entries` | Edit entries | Yes           | Day view of time entries with inline editing           |
+| `/reports` | Reports      | Yes           | Pivot table and timesheet with filters                 |
 
-Navigation is a minimal top bar component (`Nav.svelte`). It's implemented as a swappable layout component — changing the navigation style (e.g. to sidebar or tabbed) only requires swapping this component, not rewriting routes or pages.
+Authenticated pages (`/timer`, `/entries`, `/reports`) live inside a `(app)` route group that shares an auth-guarded layout with the Nav bar. The `(app)` group does not affect URLs.
+
+Navigation is a minimal top bar component (`Nav.svelte`) rendered by the `(app)` layout. It's implemented as a swappable layout component — changing the navigation style (e.g. to sidebar or tabbed) only requires swapping this component, not rewriting routes or pages. The root layout (`+layout.svelte`) only imports `app.css` and renders children — no auth logic.
 
 ### Key implementation decisions
 
@@ -1049,6 +1078,6 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Scenario**         | Users can log in, see their data, and the app redirects unauthenticated users.                                                                                                                                             |
 | **Preconditions**    | A test account exists (email/password or Google).                                                                                                                                                                          |
-| **Steps**            | 1. Navigate to the app while logged out. 2. Verify redirect to login page. 3. Log in with credentials. 4. Verify redirect to main screen with user's projects/tasks. 5. Log out (if logout UI exists) or clear auth state. |
-| **Expected outcome** | Unauthenticated users are redirected to `/login`. After login, the user sees their own projects and tasks. Each user's data is isolated.                                                                                   |
+| **Steps**            | 1. Navigate to `/timer` while logged out. 2. Verify redirect to login page. 3. Log in with credentials. 4. Verify redirect to `/timer` with user's projects/tasks. 5. Log out (if logout UI exists) or clear auth state. |
+| **Expected outcome** | Unauthenticated users navigating to `/timer` are redirected to `/login`. After login, the user is redirected to `/timer` and sees their own projects and tasks. The Home page at `/` is accessible without authentication. Each user's data is isolated.                                                                                   |
 | **Actual outcome**   |                                                                                                                                                                                                                            |

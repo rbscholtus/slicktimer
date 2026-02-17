@@ -12,7 +12,7 @@ export default defineConfig({
 			manifest: {
 				name: 'SlickTimer',
 				short_name: 'SlickTimer',
-				start_url: '/',
+				start_url: '/timer',
 				display: 'standalone',
 				background_color: '#ffffff',
 				theme_color: '#4a90d9',

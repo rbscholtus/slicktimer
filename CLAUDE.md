@@ -29,12 +29,15 @@ src/
     stores/                     # Rune-based state (.svelte.ts files)
     utils/                      # Pure utility functions (formatting, dates)
   routes/
-    +layout.svelte              # Root layout (imports app.css, auth guard)
+    +layout.svelte              # Root layout (imports app.css only, no auth)
     +layout.ts                  # Disables SSR (ssr = false)
-    +page.svelte                # Main timer screen
+    +page.svelte                # Public Home page (no auth required)
     login/+page.svelte          # Login screen
-    entries/+page.svelte        # Edit time entries
-    reports/+page.svelte        # Reports (pivot table, timesheet)
+    (app)/
+      +layout.svelte            # Auth guard + Nav for authenticated pages
+      timer/+page.svelte        # Main timer screen
+      entries/+page.svelte      # Edit time entries
+      reports/+page.svelte      # Reports (pivot table, timesheet)
 static/                         # PWA icons, favicon
 firestore.rules                 # Firestore security rules
 firebase.json                   # Firebase Hosting config

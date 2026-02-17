@@ -4,7 +4,7 @@
 	import { auth } from '$lib/firebase/config';
 
 	const links = [
-		{ href: '/', label: 'Timer' },
+		{ href: '/timer', label: 'Timer' },
 		{ href: '/entries', label: 'Entries' },
 		{ href: '/reports', label: 'Reports' }
 	];
