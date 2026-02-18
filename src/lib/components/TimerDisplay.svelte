@@ -32,13 +32,17 @@
 	});
 </script>
 
-<div class="flex items-center justify-center gap-3 border-b border-border py-2 px-3">
+<div class="flex items-center justify-center gap-3 border py-1 px-3 {isRunning
+		? 'bg-timer-bg-running border-timer-border-running'
+		: canResume
+			? 'bg-timer-bg-paused border-timer-border-paused'
+			: 'bg-timer-bg-stopped border-timer-border-stopped'}">
 	<!-- Play / Pause button -->
 	<button
 		type="button"
 		onclick={onPlayPause}
 		disabled={!canResume}
-		class="shrink-0 {canResume ? 'text-text-secondary hover:text-text-primary' : 'cursor-default text-border'}"
+		class="shrink-0 {canResume ? 'text-text-primary hover:text-text-primary' : 'cursor-default text-text-secondary'}"
 		title={isRunning ? 'Stop timer' : 'Resume timer'}
 		aria-label={isRunning ? 'Stop timer' : 'Resume timer'}
 	>
@@ -62,7 +66,7 @@
 			? pomodoroActive && pomodoroRemaining < 0
 				? 'text-notification'
 				: 'text-timer-active'
-			: 'text-text-secondary'}"
+			: 'text-text-primary'}"
 	>
 		{displayTime()}
 	</div>
@@ -72,7 +76,7 @@
 		<button
 			type="button"
 			onclick={onTogglePomodoro}
-			class="shrink-0 {pomodoroActive ? 'text-notification' : 'text-text-secondary hover:text-text-primary'}"
+			class="shrink-0 {pomodoroActive ? 'text-notification' : 'text-text-primary hover:text-text-primary'}"
 			title={pomodoroActive ? 'Pomodoro on — click to disable' : 'Enable pomodoro (25 min)'}
 			aria-label={pomodoroActive ? 'Disable pomodoro' : 'Enable pomodoro'}
 		>

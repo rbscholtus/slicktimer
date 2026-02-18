@@ -25,8 +25,17 @@
 	}
 
 	function formatDisplayDate(dateStr: string): string {
+		const today = todayDateString();
+		const yesterday = (() => { const d = new Date(today + 'T12:00:00'); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10); })();
+		const tomorrow = (() => { const d = new Date(today + 'T12:00:00'); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); })();
+
 		const d = new Date(dateStr + 'T12:00:00');
-		return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+		const weekday = d.toLocaleDateString(undefined, { weekday: 'short' });
+
+		if (dateStr === today) return `Today · ${weekday}`;
+		if (dateStr === yesterday) return `Yesterday · ${weekday}`;
+		if (dateStr === tomorrow) return `Tomorrow · ${weekday}`;
+		return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 	}
 
 	function formatTimeHHMM(ts: Timestamp): string {
@@ -36,8 +45,8 @@
 		return `${h}:${m}`;
 	}
 
-	/** Parse HH:MM string into a Date for the selected day */
-	function parseTimeToDate(timeStr: string): Date | null {
+	/** Parse HH:MM string into a Date for the selected day with specified seconds */
+	function parseTimeToDate(timeStr: string, seconds: number = 0): Date | null {
 		const parts = timeStr.split(':');
 		if (parts.length < 2) return null;
 		const h = parseInt(parts[0], 10);
@@ -45,7 +54,7 @@
 		if (isNaN(h) || isNaN(m)) return null;
 		if (h < 0 || h > 23 || m < 0 || m > 59) return null;
 		const d = new Date(`${selectedDate}T00:00:00`);
-		d.setHours(h, m, 0, 0);
+		d.setHours(h, m, seconds, 0);
 		return d;
 	}
 
@@ -66,11 +75,12 @@
 		Object.fromEntries(tasks.data.map((t) => [t.id, t]))
 	);
 
-	// Daily total
+	// Daily total and entry count (completed entries only)
+	const completedEntries = $derived(
+		entries.data.filter((e) => e.endTime !== null)
+	);
 	const dailyTotal = $derived(
-		entries.data
-			.filter((e) => e.endTime !== null)
-			.reduce((sum, e) => sum + e.duration, 0)
+		completedEntries.reduce((sum, e) => sum + e.duration, 0)
 	);
 
 	// Edit state
@@ -79,6 +89,12 @@
 	let editEnd = $state('');
 	let editComment = $state('');
 	let editError = $state('');
+	// Track original values to detect changes
+	let editOrigStart = $state('');
+	let editOrigEnd = $state('');
+	// Original seconds from the entry being edited
+	let editOrigStartSec = $state(0);
+	let editOrigEndSec = $state(0);
 
 	function startEdit(entry: TimeEntry) {
 		editingId = entry.id;
@@ -86,6 +102,10 @@
 		editEnd = entry.endTime ? formatTimeHHMM(entry.endTime) : '';
 		editComment = entry.comment || '';
 		editError = '';
+		editOrigStart = editStart;
+		editOrigEnd = editEnd;
+		editOrigStartSec = entry.startTime.toDate().getSeconds();
+		editOrigEndSec = entry.endTime ? entry.endTime.toDate().getSeconds() : 0;
 	}
 
 	function cancelEdit() {
@@ -97,13 +117,17 @@
 		if (!uid) return;
 		editError = '';
 
-		const startDate = parseTimeToDate(editStart);
+		// Determine seconds: if user changed the time, use :00/:59; otherwise preserve original
+		const startSec = editStart !== editOrigStart ? 0 : editOrigStartSec;
+		const endSec = editEnd !== editOrigEnd ? 59 : editOrigEndSec;
+
+		const startDate = parseTimeToDate(editStart, startSec);
 		if (!startDate) {
 			editError = 'Invalid start time.';
 			return;
 		}
 
-		const endDate = editEnd ? parseTimeToDate(editEnd) : null;
+		const endDate = editEnd ? parseTimeToDate(editEnd, endSec) : null;
 		if (editEnd && !endDate) {
 			editError = 'Invalid end time.';
 			return;
@@ -168,13 +192,14 @@
 			return;
 		}
 
-		const startDate = parseTimeToDate(newStart);
+		// New entries: start at :00 seconds, end at :59 seconds
+		const startDate = parseTimeToDate(newStart, 0);
 		if (!startDate) {
 			newError = 'Invalid start time.';
 			return;
 		}
 
-		const endDate = parseTimeToDate(newEnd);
+		const endDate = parseTimeToDate(newEnd, 59);
 		if (!endDate) {
 			newError = 'Invalid end time.';
 			return;
@@ -212,31 +237,96 @@
 	const activeTasks = $derived(
 		tasks.data.filter((t) => t.status === 'active')
 	);
+
+	// The entry currently being edited (for keyboard save)
+	const editingEntry = $derived(
+		editingId ? entries.data.find((e) => e.id === editingId) ?? null : null
+	);
+
+	/** Try to save whichever form is open. Returns true if saved (or nothing open). */
+	async function trySaveOpenForm(): Promise<boolean> {
+		if (showNewForm) {
+			await saveNewEntry();
+			return !showNewForm; // saveNewEntry sets showNewForm=false on success
+		}
+		if (editingEntry) {
+			await saveEdit(editingEntry);
+			return editingId === null; // saveEdit sets editingId=null on success
+		}
+		return true;
+	}
+
+	async function prevDayWithSave() {
+		if (!(await trySaveOpenForm())) return;
+		prevDay();
+	}
+
+	async function nextDayWithSave() {
+		if (!(await trySaveOpenForm())) return;
+		nextDay();
+	}
+
+	function handleKeydown(e: KeyboardEvent) {
+		// Ctrl+Enter / Cmd+Enter: save open form
+		if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+			e.preventDefault();
+			if (showNewForm) saveNewEntry();
+			else if (editingEntry) saveEdit(editingEntry);
+		}
+		// Escape: dismiss delete confirmation, or cancel open form
+		if (e.key === 'Escape') {
+			if (deletingId !== null) {
+				e.preventDefault();
+				deletingId = null;
+			} else if (showNewForm) {
+				e.preventDefault();
+				cancelNewEntry();
+			} else if (editingId !== null) {
+				e.preventDefault();
+				cancelEdit();
+			}
+		}
+	}
 </script>
 
 <svelte:head>
-	<title>SlickTimer — Entries</title>
+	<title>SlickTimer — Edit Entries</title>
 </svelte:head>
 
-<div class="flex h-full flex-col overflow-hidden px-2 py-2">
-	<!-- Date picker header -->
-	<div class="flex items-center justify-between pb-2">
-		<button onclick={prevDay} class="text-sm text-text-secondary hover:text-text-primary">&larr;</button>
-		<span class="text-sm font-semibold text-text-primary">{formatDisplayDate(selectedDate)}</span>
-		<button onclick={nextDay} class="text-sm text-text-secondary hover:text-text-primary">&rarr;</button>
-	</div>
+<svelte:window onkeydown={handleKeydown} />
 
-	<!-- New entry button -->
-	{#if !showNewForm}
-		<div class="pb-2">
-			<button
-				onclick={() => { showNewForm = true; newError = ''; }}
-				class="text-sm text-primary hover:underline"
-			>
-				+ New Entry
-			</button>
+<div class="flex h-full flex-col overflow-hidden px-2 py-2">
+	<!-- Header row -->
+	<div class="flex items-center justify-between pb-2">
+		<!-- Left: New Entry link -->
+		<div class="w-28">
+			{#if !showNewForm}
+				<button
+					onclick={() => { showNewForm = true; newError = ''; }}
+					class="text-sm text-primary hover:underline"
+				>
+					+ New Entry
+				</button>
+			{/if}
 		</div>
-	{/if}
+
+		<!-- Center: Date navigation -->
+		<div class="flex items-center gap-1">
+			<button onclick={prevDayWithSave} class="text-sm text-text-secondary hover:text-text-primary">&larr;</button>
+			<span class="text-sm font-semibold text-text-primary">{formatDisplayDate(selectedDate)}</span>
+			<button onclick={nextDayWithSave} class="text-sm text-text-secondary hover:text-text-primary">&rarr;</button>
+		</div>
+
+		<!-- Right: Entry count and total -->
+		<div class="w-28 text-right">
+			{#if entries.data.length > 0}
+				<span class="whitespace-nowrap text-xs text-text-secondary">
+					<strong>{entries.data.length}</strong> {entries.data.length === 1 ? 'entry' : 'entries'}
+					<strong>{formatDurationShort(dailyTotal)}</strong>
+				</span>
+			{/if}
+		</div>
+	</div>
 
 	<!-- New entry form -->
 	{#if showNewForm}
@@ -286,17 +376,17 @@
 	{/if}
 
 	<!-- Entries list -->
-	<div class="min-h-0 flex-1 overflow-y-auto">
+	<div class="min-h-0 flex-1 space-y-1.5 overflow-y-auto">
 		{#if entries.loading}
 			<p class="text-sm text-text-secondary">Loading...</p>
 		{:else if entries.data.length === 0}
 			<p class="text-sm text-text-secondary">No entries for this day.</p>
 		{:else}
-			{#each entries.data as entry, i}
-				<div class="border-b border-border py-1.5 {i % 2 === 1 ? 'bg-bg-alt' : ''}">
+			{#each entries.data as entry}
+				<div class="rounded bg-bg-entry border border-border-entry p-2">
 					{#if editingId === entry.id}
 						<!-- Edit mode -->
-						<div class="bg-bg-edit p-1.5 space-y-1">
+						<div class="space-y-1">
 							<div class="flex items-center gap-2">
 								<input
 									type="time"
@@ -326,42 +416,66 @@
 						</div>
 					{:else if deletingId === entry.id}
 						<!-- Delete confirmation -->
-						<div class="flex items-center gap-2 px-1">
+						<div class="flex items-center gap-2">
 							<span class="text-sm text-text-primary">Delete this entry?</span>
 							<button onclick={() => confirmDelete(entry.id)} class="text-sm text-timer-stopped hover:underline">Yes</button>
 							<button onclick={() => (deletingId = null)} class="text-sm text-text-secondary hover:text-text-primary">No</button>
 						</div>
 					{:else}
-						<!-- Display mode -->
-						<div class="flex items-start justify-between px-1">
-							<div class="min-w-0 flex-1">
-								<div class="text-sm text-text-primary">
-									<span class="font-mono">{formatTimeHHMM(entry.startTime)}</span>
+						<!-- Display mode: [time/dur] [info] [actions] -->
+						<div class="grid items-start gap-x-3" style="grid-template-columns: 8rem 1fr auto">
+							<div class="text-left">
+								<div class="text-sm font-mono text-text-primary">
 									{#if entry.endTime}
-										<span class="text-text-secondary"> – </span>
-										<span class="font-mono">{formatTimeHHMM(entry.endTime)}</span>
-										<span class="ml-1 text-text-secondary">({formatDurationShort(entry.duration)})</span>
+										{formatTimeHHMM(entry.startTime)}<span class="text-text-secondary"> – </span>{formatTimeHHMM(entry.endTime)}
 									{:else}
-										<span class="ml-1 text-timer-active">(running)</span>
+										{formatTimeHHMM(entry.startTime)}<span class="font-sans text-xs text-timer-active"> (running)</span>
 									{/if}
 								</div>
-								<div class="text-sm text-text-secondary">
-									{taskMap[entry.taskId]?.name ?? 'Unknown task'}
-									<span class="text-text-secondary/60">·</span>
-									{projectMap[entry.projectId]?.name ?? 'Unknown project'}
+								{#if entry.endTime}
+									<div class="text-xs text-text-secondary">{formatDurationShort(entry.duration)}</div>
+								{/if}
+							</div>
+							<div class="min-w-0">
+								<div class="flex items-center gap-1 text-sm">
+									{#if projectMap[entry.projectId]?.color}
+										<span
+											class="inline-block h-2 w-2 shrink-0 rounded-sm"
+											style="background-color: {projectMap[entry.projectId].color}"
+										></span>
+									{/if}
+									<span class="text-text-secondary">{projectMap[entry.projectId]?.name ?? 'Unknown project'}</span>
+									<span class="text-text-secondary"> · </span>
+									<span class="font-semibold text-text-primary">{taskMap[entry.taskId]?.name ?? 'Unknown task'}</span>
 								</div>
-								{#if entry.tags && entry.tags.length > 0}
+								{#if (entry.tags ?? []).length || (taskMap[entry.taskId]?.tags ?? []).length || (projectMap[entry.projectId]?.tags ?? []).length}
+									{@const entryTags = entry.tags ?? []}
+									{@const taskTags = taskMap[entry.taskId]?.tags ?? []}
+									{@const projectTags = projectMap[entry.projectId]?.tags ?? []}
 									<div class="text-xs text-text-secondary">
-										{entry.tags.map((t) => `#${t}`).join(' ')}
+										{#if entryTags.length > 0}
+											{entryTags.map((t) => `#${t}`).join(' ')}
+										{/if}
+										{#if taskTags.length > 0}
+											{#if entryTags.length > 0}<span> · </span>{/if}
+											<span>From Task: {taskTags.map((t) => `#${t}`).join(' ')}</span>
+										{/if}
+										{#if projectTags.length > 0}
+											{#if entryTags.length > 0 || taskTags.length > 0}<span> · </span>{/if}
+											<span>From Project: {projectTags.map((t) => `#${t}`).join(' ')}</span>
+										{/if}
 									</div>
+								{:else}
+									<div class="text-xs text-text-secondary">No tags</div>
 								{/if}
 								{#if entry.comment}
 									<div class="text-xs text-text-secondary italic">"{entry.comment}"</div>
 								{/if}
 							</div>
-							<div class="flex shrink-0 gap-1">
-								<button onclick={() => startEdit(entry)} class="text-xs text-text-secondary hover:text-primary" title="Edit">Edit</button>
-								<button onclick={() => (deletingId = entry.id)} class="text-xs text-text-secondary hover:text-timer-stopped" title="Delete">Del</button>
+							<div class="flex items-center gap-1.5">
+								<button onclick={() => startEdit(entry)} class="text-xs text-text-secondary hover:text-primary">Edit</button>
+								<span class="text-xs text-text-secondary">·</span>
+								<button onclick={() => (deletingId = entry.id)} class="text-xs text-text-secondary hover:text-timer-stopped">Delete</button>
 							</div>
 						</div>
 					{/if}
@@ -369,11 +483,4 @@
 			{/each}
 		{/if}
 	</div>
-
-	<!-- Daily total footer -->
-	{#if entries.data.length > 0}
-		<div class="border-t border-border pt-1.5">
-			<span class="text-sm font-semibold text-text-primary">Total: {formatDurationShort(dailyTotal)}</span>
-		</div>
-	{/if}
 </div>

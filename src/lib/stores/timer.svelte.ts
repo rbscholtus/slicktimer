@@ -91,87 +91,93 @@ async function startTask(taskId: string, task: Task) {
 
 	// Toggle: clicking the running task stops it
 	if (runningTaskId === taskId) {
-		await stopTimer();
+		const snapshot = stopTimerOptimistic();
+		if (snapshot.entryId) stopTimerFirestore(snapshot.entryId, snapshot.finalElapsed);
 		return;
 	}
 
 	// Stop current timer if running a different task
 	if (runningTaskId !== null) {
-		await stopTimer();
+		const snapshot = stopTimerOptimistic();
+		if (snapshot.entryId) stopTimerFirestore(snapshot.entryId, snapshot.finalElapsed);
 	}
 
 	clearIdleTimeout();
 
-	// Fetch the most recent comment for this task today (carry-over)
-	let carryComment = '';
-	try {
-		const prevQ = query(
-			collection(db, `users/${uid}/timeEntries`),
-			where('taskId', '==', taskId),
-			where('date', '==', todayDateString()),
-			where('endTime', '!=', null),
-			orderBy('endTime', 'desc'),
-			limit(1)
-		);
-		const prevSnap = await getDocs(prevQ);
-		if (!prevSnap.empty) {
-			carryComment = prevSnap.docs[0].data().comment || '';
-		}
-	} catch {
-		// Non-critical — proceed without carry-over
-	}
+	// Update local state immediately — UI responds before any network round-trip
+	const now = Date.now();
+	runningTaskId = taskId;
+	activeTaskId = taskId;
+	activeTaskName = task.name;
+	activeTask = task;
+	runningEntryId = null; // will be filled once addDoc resolves
+	startTimestamp = now;
+	elapsed = 0;
+	comment = '';
+	pomodoroNotified = false;
 
-	// Create time entry in Firestore
-	const entryRef = await addDoc(collection(db, `users/${uid}/timeEntries`), {
+	startInterval();
+
+	// Write to Firestore in the background
+	const localUid = uid;
+	const date = todayDateString();
+
+	const entryRef = await addDoc(collection(db, `users/${localUid}/timeEntries`), {
 		taskId,
 		projectId: task.projectId,
 		startTime: serverTimestamp(),
 		endTime: null,
 		duration: 0,
 		tags: task.tags || [],
-		comment: carryComment,
-		date: todayDateString(),
-		userId: uid,
+		comment: '',
+		date,
+		userId: localUid,
 		createdAt: serverTimestamp(),
 		updatedAt: serverTimestamp()
 	});
 
-	runningTaskId = taskId;
-	activeTaskId = taskId;
-	activeTaskName = task.name;
-	activeTask = task;
-	runningEntryId = entryRef.id;
-	startTimestamp = Date.now();
-	elapsed = 0;
-	comment = carryComment;
-	pomodoroNotified = false;
+	// If the timer was stopped before addDoc resolved, delete the orphaned entry immediately
+	if (runningTaskId !== taskId) {
+		await deleteDoc(doc(db, `users/${localUid}/timeEntries/${entryRef.id}`));
+		return;
+	}
 
-	startInterval();
+	runningEntryId = entryRef.id;
+
+	// Fetch carry-over comment asynchronously and patch if still relevant
+	try {
+		const prevQ = query(
+			collection(db, `users/${localUid}/timeEntries`),
+			where('taskId', '==', taskId),
+			where('date', '==', date),
+			where('endTime', '!=', null),
+			orderBy('endTime', 'desc'),
+			limit(1)
+		);
+		const prevSnap = await getDocs(prevQ);
+		if (!prevSnap.empty && runningTaskId === taskId) {
+			const carryComment = prevSnap.docs[0].data().comment || '';
+			if (carryComment) {
+				comment = carryComment;
+				await updateDoc(doc(db, `users/${localUid}/timeEntries/${entryRef.id}`), {
+					comment: carryComment,
+					updatedAt: serverTimestamp()
+				});
+			}
+		}
+	} catch {
+		// Non-critical — timer is already running
+	}
 }
 
-async function stopTimer() {
-	if (!uid || !runningEntryId) return;
-
+// Snapshot local state for the Firestore write, then clear immediately
+function stopTimerOptimistic(): { entryId: string | null; finalElapsed: number } {
 	stopInterval();
 
-	// Calculate final elapsed
-	if (startTimestamp !== null) {
-		elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
-	}
+	const finalElapsed =
+		startTimestamp !== null ? Math.floor((Date.now() - startTimestamp) / 1000) : elapsed;
 
-	const entryPath = `users/${uid}/timeEntries/${runningEntryId}`;
-
-	if (elapsed < MIN_DURATION_SECONDS) {
-		// Discard short entries
-		await deleteDoc(doc(db, entryPath));
-	} else {
-		// Save the entry
-		await updateDoc(doc(db, entryPath), {
-			endTime: serverTimestamp(),
-			duration: elapsed,
-			updatedAt: serverTimestamp()
-		});
-	}
+	const entryId = runningEntryId;
 
 	runningTaskId = null;
 	runningEntryId = null;
@@ -182,6 +188,29 @@ async function stopTimer() {
 	// comment persists for read-only display until next task starts
 
 	startIdleTimeout();
+
+	return { entryId, finalElapsed };
+}
+
+// Persist the stopped entry to Firestore
+async function stopTimerFirestore(entryId: string, finalElapsed: number): Promise<void> {
+	if (!uid) return;
+	const entryPath = `users/${uid}/timeEntries/${entryId}`;
+	if (finalElapsed < MIN_DURATION_SECONDS) {
+		await deleteDoc(doc(db, entryPath));
+	} else {
+		await updateDoc(doc(db, entryPath), {
+			endTime: serverTimestamp(),
+			duration: finalElapsed,
+			updatedAt: serverTimestamp()
+		});
+	}
+}
+
+async function stopTimer() {
+	if (!uid || !runningEntryId) return;
+	const { entryId, finalElapsed } = stopTimerOptimistic();
+	if (entryId) await stopTimerFirestore(entryId, finalElapsed);
 }
 
 async function completeTask(taskId: string) {

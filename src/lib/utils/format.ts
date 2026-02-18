@@ -8,8 +8,9 @@ export function formatDuration(totalSeconds: number): string {
 }
 
 export function formatDurationShort(totalSeconds: number): string {
-	const hours = Math.floor(totalSeconds / 3600);
-	const minutes = Math.floor((totalSeconds % 3600) / 60);
+	const rounded = totalSeconds + 30; // round to nearest minute
+	const hours = Math.floor(rounded / 3600);
+	const minutes = Math.floor((rounded % 3600) / 60);
 	if (hours > 0) {
 		return `${hours}h ${minutes}m`;
 	}

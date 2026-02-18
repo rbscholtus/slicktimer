@@ -78,20 +78,20 @@ The demo of the original SlimTimer is here: https://www.youtube.com/watch?v=Ceed
 - **Purpose**: Landing page for slicktimer.com with static information about the app.
 - **Layout**: Centered content with `max-w-lg`.
 - **Nav bar (logged out)**: Blue nav bar with "Home" tab (active) and "Login" link at the far right.
-- **Nav bar (logged in)**: Full Nav component — Home (active), Entries, Tasks, Projects, Reports + Logout at far right.
-- **"Open Timer" button**: In the page body, opens the timer at `/timer` in a slim popup window (`width=300, height=640, resizable=yes`) using `window.open()`. Users can bookmark this link to launch the timer directly.
-- **Getting Started section**: Step-by-step instructions explaining how to use SlickTimer (bookmark the timer, click tasks to track time, close the window safely, etc.).
+- **Nav bar (logged in)**: Full Nav component — Home (active), Edit Entries, Edit Tasks, Edit Projects, Run Reports + Open Timer, Logout at far right.
+- **"start the clock" link**: In the page body, opens the timer at `/timer` in a slim popup window (`width=300, height=640, resizable=yes`) using `window.open()`. Users can bookmark this link to launch the timer directly.
+- **Marketing copy**: Describes SlickTimer as the spiritual successor to SlimTimer, highlighting Project Folders and Offline Mode.
 - **Auth-aware**: Imports `getUser()` to detect login state and render the appropriate nav bar.
 
 ### Timer screen
 
 - **Route**: `/timer` — requires authentication. Redirects to `/login` if not authenticated.
 - **Layout**: Slim, narrow format designed to sit alongside other windows on the user's screen. Ideally launched from the Home page into a slim browser window. When installed as a PWA, this is the primary app window. The screen is split into three vertical zones: (1) the big timer at top, (2) the scrollable task list in the middle, and (3) the Add Task / Add Project forms fixed at the bottom of the viewport.
-- **Big timer (daily total)**: The large clock readout at the top shows the **total time logged today** (sum of all completed time entries plus the currently running timer). It is green when a timer is running, grey when idle. In pomodoro mode, it shows the countdown instead.
+- **Big timer (daily total)**: The large clock readout at the top shows the **total time logged today** (sum of all completed time entries plus the currently running timer). The timer bar background is green when running, amber when paused (task selected but stopped), and salmon when idle (no active task). In pomodoro mode, the countdown is shown instead of the daily total.
 - **Active task name**: The browser window title updates to `[HH:MM:SS] Task Name - SlickTimer` while a timer is running, so the user can see what they're timing at a glance from the taskbar/dock. Resets to `SlickTimer` when stopped.
 - **Play/Pause button**: A play/pause icon button sits next to the big timer clock. When the timer is running, clicking it stops the timer. When stopped and there is an active task (one that was previously running this session), clicking it restarts timing that task. Disabled (greyed out) when there is no active task — e.g. on a fresh session before any task has been started, or when the last active task has been completed or archived.
 - **Pomodoro toggle**: A hourglass icon button sits next to the big timer. It is grey when pomodoro is off, orange when on. Clicking it toggles pomodoro mode. Only visible when a timer is running.
-- **Task list**: Shows all active tasks grouped by project. Tasks within a project can be reordered by dragging. The task list scrolls independently when it overflows. The currently running task row is highlighted green. The active-but-stopped task (the one that will resume if the play button is pressed) is highlighted with a subtle grey tint so it is visually distinct from other tasks.
+- **Task list**: Shows all active tasks grouped by project. Tasks within a project can be reordered by dragging. The task list scrolls independently when it overflows. The currently running task row is highlighted with a 50% green tint (`timer-bg-running/50`), matching the green timer bar. The active-but-stopped task (the one that will resume if the play button is pressed) is highlighted with a 50% amber tint (`timer-bg-paused/50`), matching the amber timer bar.
 - **Per-task duration**: The currently active task row shows the **total duration for that task today** (sum of all completed entries for that task plus the running entry's elapsed time). When the timer is stopped, the duration remains visible on that task row. When a different task is started, only the new task shows its duration — the previous task's inline duration disappears.
 - **Duration toggle**: While the timer is running, clicking the duration readout on the running task row toggles between two views: (1) **today's total** for that task (default), and (2) **this entry's elapsed time** (just the current session). The toggle resets to total view when the timer stops or a different task starts.
 - **Adding tasks and projects**: The "Add Task" and "Add Project" buttons are fixed at the bottom of the viewport, always visible regardless of scrolling. When creating a task, the user selects a project and optionally adds tags using `#` syntax (e.g., `#billable`). If a task is general-purpose, it should be added to a "General" or "BAU" project.
@@ -107,9 +107,10 @@ The demo of the original SlimTimer is here: https://www.youtube.com/watch?v=Ceed
   - Pressing Enter saves the comment to Firestore and closes the field.
   - Pressing Escape closes the field without saving.
   - When the timer is stopped, the comment field becomes read-only and shows the saved comment, until a new task is started (at which point it resets).
-  - **Comment carry-over**: When a task is started, the comment from that task's most recent previous time entry today is pre-populated in the comment field. The user can edit or clear it before saving.
-- **Starting a timer**: Clicking a task immediately starts a timer and creates a new time entry. Only one timer can run at a time.
-- **Stopping a timer**: Clicking the currently running task stops its timer. Clicking a different task stops the current timer and starts a new one for the clicked task.
+  - **Comment carry-over**: When a task is started, the comment from that task's most recent previous time entry today is fetched asynchronously and pre-populated in the comment field (without blocking the timer start). The user can edit or clear it before saving.
+- **Starting a timer**: Clicking a task immediately starts the timer — local state updates instantly (optimistic UI) and the Firestore write happens in the background. Only one timer can run at a time.
+- **Stopping a timer**: Clicking the currently running task stops its timer instantly (optimistic UI). Clicking a different task stops the current timer and starts a new one, both updating the UI immediately with Firestore writes in the background.
+- **Comment carry-over timing**: The carry-over comment is fetched asynchronously after the timer starts, so the timer is never delayed by the Firestore read. The comment field updates once the fetch completes.
 - **Minimum duration**: If a time entry's duration is less than 10 seconds when stopped, it is discarded and not saved.
 - **Pomodoro mode**: The user can toggle the running timer to pomodoro mode via the hourglass icon button (25-minute countdown). When the countdown reaches zero, a browser notification alerts the user, but the timer continues running until manually stopped. The timer displays overtime as `+H:MM:SS` after the target is exceeded.
 - **Idle notification**: If no timer is running for 15 minutes, a browser notification prompts the user to start timing. Notification permission is requested as soon as the user is authenticated (on first page load after login), so it is available for both idle and pomodoro alerts.
@@ -142,17 +143,44 @@ The demo of the original SlimTimer is here: https://www.youtube.com/watch?v=Ceed
 ### Edit Time Entries screen
 
 - **Route**: `/entries` — requires authentication.
-- **Date picker**: Header row with previous/next day arrows and the current date displayed as a readable string (e.g. "Mon, Feb 16, 2026"). Defaults to today.
+- **Header row**: Three-section layout — "+ New Entry" link (far left), date with prev/next arrows (center), entry count and daily total (far right).
+- **Date navigation**: Previous/next day arrows flank the date label. Defaults to today. The label is locale-aware (respects browser/OS language settings for month/day order). For today, yesterday, and tomorrow it shows a human-friendly label with the short weekday: **"Today · Wed"**, **"Yesterday · Tue"**, **"Tomorrow · Thu"**. All other dates show the full locale-formatted date (e.g. "Wed, Feb 18, 2026" in en-US, or "wo 18 feb 2026" in nl).
 - Shows all time entries for the selected day in chronological order (sorted by `startTime`).
-- Each time entry displays: start time, end time, duration, task name, project name, tags (as `#tag`), and comment.
-- **Zebra striping**: Alternating row backgrounds (`bg-primary` / `bg-alt`) for readability.
-- **Edit**: Each entry has an "Edit" button. Clicking it shows an inline edit form (with `bg-edit` background). Editable fields: start time (`input type=time`), end time (`input type=time`), and comment. Duration auto-calculates from start/end. Tags editing will be added later.
-- **Delete**: Each entry has a "Del" button. Clicking it shows an inline "Delete this entry?" confirmation (Yes/No) — no modal.
-- **New entry**: A "+ New Entry" button at the top opens an inline form (with `bg-edit` background). Fields: task (select from active tasks list, showing task name and project), start time, end time, comment. Tags are inherited from the selected task.
+- **Entry cards**: Each entry is wrapped in a rounded light-blue box (`bg-entry` / `border-entry`), similar to the original SlimTimer. Compact 3-column layout: left column — time range and duration (top-aligned); middle column — small project color dot + task name (bold) + project name on the same line, tags line below, comment below tags; right column — Edit · Delete buttons. All columns are top-aligned. The tags line always shows — if no tags exist anywhere it shows "No tags"; otherwise shows entry-level tags first, then "From Task: #tag" (if any), then "From Project: #tag" (if any), each section separated by " · ". Duplicates are shown in each section where they appear.
+- **Edit**: Each entry has an "Edit" button. Clicking it shows an inline edit form inside the entry card. Editable fields: start time (`input type=time`), end time (`input type=time`), and comment. Duration auto-calculates from start/end. Tags editing will be added later.
+- **Delete**: Each entry has a "Delete" button. Clicking it shows an inline "Delete this entry?" confirmation (Yes/No) — no modal. Pressing **Escape** dismisses the confirmation (same as clicking "No").
+- **New entry**: A "+ New Entry" link at the far left of the header opens an inline form (with `bg-edit` background). Fields: task (select from active tasks list, showing task name and project), start time, end time, comment. Tags are inherited from the selected task.
+- **Seconds handling**: New entries save start time with `:00` seconds and end time with `:59` seconds. When editing, if the user changes the start time, it becomes `:00`; if they change the end time, it becomes `:59`. Unchanged fields preserve their original seconds.
+- **Keyboard shortcuts**: **Ctrl+Enter** (Windows/Linux) or **Cmd+Enter** (Mac) saves the currently open Edit or New Entry form. **Escape** cancels the current form or dismisses the delete confirmation.
+- **Auto-save on day navigation**: When a form is open and the user clicks the previous/next day arrows, the form is saved first. If validation fails, navigation is blocked and the error is shown.
 - **Minimum duration**: When saving an edit or new entry, entries with duration < 10 seconds are rejected.
-- **Daily total**: Footer row showing the sum of all completed entry durations for the day.
 - **Running entries**: Entries with `endTime: null` are shown with a "(running)" indicator instead of an end time. They are not editable.
 - Time entries shorter than 10 seconds are not shown (they are discarded at creation time).
+
+### Edit Tasks screen
+
+- **Route**: `/tasks` — requires authentication.
+- **Display**: Tasks listed in a flat list grouped by project (sorted by project order). Each project gets a section header with a color swatch, **bold project name** (slightly larger than task text, not all-caps), and any project-level tags in muted text. Within each project, tasks are sorted by order.
+- **Default view**: Shows `active` and `completed` tasks. Archived tasks are hidden unless the "Show archived" toggle (top-right) is on.
+- **Task row**: Checkbox (complete toggle), task name, tags, entry stats (count + total duration), and action buttons (Edit · Archive · Delete). Archived tasks show only "Un-archive" and "Delete" actions.
+- **Entry stats**: Each task row shows the number of completed time entries and the total tracked time (e.g. "· 3 entries, 2h 15m") computed from the locally loaded `timeEntries` collection.
+- **Complete/Uncomplete**: Checkbox toggles between `active` and `completed`. Checking an active task sets `status: completed` with `completedAt`. Unchecking sets `status: active` and clears `completedAt`. If the task is currently running in the timer, an error is shown: "Task is currently running. Stop the timer first."
+- **Archive**: Available on any non-archived task (active or completed). For active tasks, it completes the task first (recording `completedAt`) then immediately archives it in a single write. If the task is currently running, shows an error: "Task is currently running. Stop the timer first." Archived tasks are removed from the default view.
+- **Un-archive**: Restores a task to `active` and clears `completedAt`.
+- **Inline edit form**: Click Edit to replace the row with an edit form. Fields: task name (text), project (select), tags (comma-separated text). Ctrl+Enter saves, Escape cancels.
+- **Delete task**: Click Delete to show an inline confirmation showing the count of time entries that will also be deleted. Confirm with "Yes, delete" or dismiss. Uses a Firestore batch write to delete the task and all its time entries atomically.
+- **Timer-running guard**: All write operations that check running state query Firestore for a `timeEntries` document with `endTime: null` for that task, since the timer runs in a separate popup window.
+
+### Edit Projects screen
+
+- **Route**: `/projects` — requires authentication.
+- **Display**: All projects listed in order. Each row uses a light-blue entry card style (same as Edit Tasks and Edit Entries). Rows show a color swatch, project name, task counts (active / completed / archived), tags, and action buttons (Edit · Complete all · Archive all · Delete).
+- **Task counts**: Each project row shows the count of active, completed, and archived tasks. If all are 0, shows "0 tasks". Only non-zero counts are shown when at least one exists (e.g. "2 active 1 archived").
+- **Inline edit form**: Click Edit to replace the row with an edit form. Fields: color (`<input type="color">`), name (text), tags (comma-separated text). Ctrl+Enter saves, Escape cancels. Clicking Edit on a different project while one is open auto-saves the current edits (if anything changed) before opening the new form. If nothing changed, no Firestore write is made (no timestamp bump).
+- **Complete all tasks**: Click "Complete all" to mark all active tasks in the project as `completed` (with `completedAt`). Shows a confirmation with the task count before executing. If any task is currently running, shows an error and blocks the action. Disabled (but visible) when the project has no active tasks.
+- **Archive all tasks**: Click "Archive all" to archive all non-archived (active + completed) tasks in the project. Shows a confirmation stating the count of active and completed tasks that will be archived. If any task is running, shows an error and blocks the action. After archiving, the project disappears from the timer task list without deleting any data. Disabled (but visible) when all tasks are already archived (or the project has no tasks).
+- **Delete project**: Click Delete to open a type-to-confirm inline form. Shows the count of tasks and time entries that will be deleted. The Delete button is only enabled when the user has typed the exact project name. Uses a Firestore batch write to delete all time entries, all tasks, and the project document.
+- **Timer nav label**: The timer nav shows "Edit Entries" (was "Manage Data") to stay consistent with nav label conventions.
 
 ### Reporting screen
 
@@ -201,6 +229,14 @@ The default palette uses the same hue families as the original SlimTimer but wit
 | Nav hover        | Very light blue       | `nav-hover`       | Navigation link hover background                          |
 | Nav active bg    | White                 | `nav-active-bg`   | Currently active navigation tab background                |
 | Nav active text  | Medium grey           | `nav-active-text` | Currently active navigation tab text                      |
+| Entry background | Light blue            | `bg-entry`        | Time entry card background (matches SlimTimer edit page)  |
+| Entry border     | Very light blue       | `border-entry`    | Time entry card border                                    |
+| Timer bar stopped bg | Salmon            | `timer-bg-stopped`    | Timer bar background when no task is selected         |
+| Timer bar stopped border | Salmon-red    | `timer-border-stopped`| Timer bar border when no task is selected             |
+| Timer bar paused bg | Amber              | `timer-bg-paused`     | Timer bar background when task selected but paused    |
+| Timer bar paused border | Dark amber     | `timer-border-paused` | Timer bar border when task selected but paused        |
+| Timer bar running bg | Green              | `timer-bg-running`    | Timer bar background when timer is actively running   |
+| Timer bar running border | Green         | `timer-border-running`| Timer bar border when timer is actively running       |
 
 **Alternate themes** (future, config-only switches):
 - **Bold/Vibrant**: Original SlimTimer colors — saturated orange, bright red, lime green.
@@ -216,8 +252,11 @@ The default palette uses the same hue families as the original SlimTimer but wit
 ### Timer popup/sidebar
 
 - **Width**: Full width of the browser window — no fixed or maximum width. Designed to be dragged to a narrow width (~200–300px) by the user and floated alongside other windows.
-- **Header**: Colored bar using the `notification` token (softened orange/amber). Shows the current timer state.
-- **Timer display**: Large monospace digital clock readout (the most prominent element).
+- **Timer bar**: Full-width colored bar at the top of the timer window. Background and border color reflects the current state:
+  - **Stopped** (no task selected): salmon background (`#ffcebe` / `timer-bg-stopped`), salmon-red border (`#c56346` / `timer-border-stopped`)
+  - **Paused** (task selected but timer not running): amber background (`#fff3bf` / `timer-bg-paused`), amber border (`#c9a227` / `timer-border-paused`)
+  - **Running**: green background (`#ccffbf` / `timer-bg-running`), green border (`#55c933` / `timer-border-running`)
+- **Timer display**: Large monospace digital clock readout (the most prominent element) inside the timer bar.
 - **Task list**: Dense, compact rows. Each row shows task name and a clickable area. Active task is highlighted with `timer-active` background. Minimal padding between rows.
 - **Information density**: Extremely high. No whitespace padding beyond what's needed for legibility.
 
@@ -395,9 +434,9 @@ slicktimer/
 │   │       ├── entries/
 │   │       │   └── +page.svelte    # Edit time entries screen
 │   │       ├── tasks/
-│   │       │   └── +page.svelte    # Tasks management (stub)
+│   │       │   └── +page.svelte    # Edit Tasks screen
 │   │       ├── projects/
-│   │       │   └── +page.svelte    # Projects management (stub)
+│   │       │   └── +page.svelte    # Edit Projects screen
 │   │       └── reports/
 │   │           └── +page.svelte    # Reporting screen
 │   └── lib/
@@ -617,6 +656,8 @@ Design tokens are defined in `src/app.css` using `@theme` (Tailwind v4 syntax �
   --color-nav-hover: #E2F0FF;
   --color-nav-active-bg: #ffffff;
   --color-nav-active-text: #555555;
+  --color-bg-entry: #e6f2ff;
+  --color-border-entry: #f2f8ff;
 }
 ```
 
@@ -630,13 +671,13 @@ To switch themes, only these values need to change. The markup stays the same.
 | `/login`    | Login        | No            | Firebase Auth login (email + social providers)       |
 | `/timer`    | Timer        | Yes           | Timer sidebar: task list, timer display, daily total |
 | `/entries`  | Edit entries | Yes           | Day view of time entries with inline editing         |
-| `/tasks`    | Tasks        | Yes           | Tasks management (stub — coming soon)                |
-| `/projects` | Projects     | Yes           | Projects management (stub — coming soon)             |
+| `/tasks`    | Edit Tasks   | Yes           | Inline task editing: name, project, tags, status, delete |
+| `/projects` | Edit Projects| Yes           | Inline project editing: name, color, tags, bulk actions, delete |
 | `/reports`  | Reports      | Yes           | Pivot table and timesheet with filters               |
 
 Authenticated pages (`/timer`, `/entries`, `/tasks`, `/projects`, `/reports`) live inside a `(app)` route group that shares an auth-guarded layout with the Nav bar. The `(app)` group does not affect URLs.
 
-Navigation is a blue top bar component (`Nav.svelte`) rendered by the `(app)` layout. The Nav links are: Home→`/`, Entries→`/entries`, Tasks→`/tasks`, Projects→`/projects`, Reports→`/reports`, with Logout at the far right. On the timer page, the layout renders a custom nav instead of `Nav.svelte`: **Manage Data** (opens `/entries` in the main browser window), **Run Reports** (opens `/reports` in the main browser window), and **Logout** at the far right. If the timer was opened via `window.open()`, these links navigate the opener window; otherwise they open a new tab. The Home page (`/`) also renders the Nav component when logged in, or a minimal blue bar with just a Login link when logged out. The root layout (`+layout.svelte`) only imports `app.css` and renders children — no auth logic.
+Navigation is a blue top bar component (`Nav.svelte`) rendered by the `(app)` layout. The Nav links are: Home→`/`, Edit Entries→`/entries`, Edit Tasks→`/tasks`, Edit Projects→`/projects`, Run Reports→`/reports`, with Open Timer and Logout at the far right. The Open Timer button opens `/timer` in a popup window (`width=300, height=640, resizable=yes`). On the timer page, the layout renders a custom nav instead of `Nav.svelte`: **Edit Entries** (opens `/entries` in the main browser window), **Run Reports** (opens `/reports` in the main browser window), and **Logout** at the far right. If the timer was opened via `window.open()`, these links navigate the opener window; otherwise they open a new tab. The Home page (`/`) also renders the Nav component when logged in, or a minimal blue bar with just a Login link when logged out. The root layout (`+layout.svelte`) only imports `app.css` and renders children — no auth logic.
 
 ### Key implementation decisions
 
@@ -647,6 +688,7 @@ Navigation is a blue top bar component (`Nav.svelte`) rendered by the `(app)` la
 5. **PWA via @vite-pwa/sveltekit** — Zero-config Workbox service worker for offline caching and auto-updates.
 6. **Client-side only Firebase** — No `firebase-admin` dependency. All Firestore reads/writes happen via the client SDK with security enforced by Firestore rules.
 7. **Firestore offline persistence** — `enablePersistence()` is called once at startup. Combined with `onSnapshot` listeners, the app works offline and syncs automatically.
+8. **Duration display rounds to nearest minute** — `formatDurationShort()` (used in entry cards, daily totals, task stats, and reports) adds 30 seconds before dividing, so 59 seconds displays as "1m" rather than "0m". The stored `duration` value is unchanged. `formatDuration()` (used in the live timer) remains exact (H:MM:SS).
 
 ### Firebase console setup (before coding)
 

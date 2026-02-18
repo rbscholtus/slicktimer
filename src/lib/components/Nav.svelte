@@ -5,14 +5,18 @@
 
 	const links = [
 		{ href: '/', label: 'Home' },
-		{ href: '/entries', label: 'Entries' },
-		{ href: '/tasks', label: 'Tasks' },
-		{ href: '/projects', label: 'Projects' },
-		{ href: '/reports', label: 'Reports' }
+		{ href: '/entries', label: 'Edit Entries' },
+		{ href: '/tasks', label: 'Edit Tasks' },
+		{ href: '/projects', label: 'Edit Projects' },
+		{ href: '/reports', label: 'Run Reports' }
 	];
 
 	function logout() {
 		signOut(auth);
+	}
+
+	function openTimer() {
+		window.open('/timer', 'slicktimer', 'width=300,height=640,resizable=yes');
 	}
 </script>
 
@@ -37,6 +41,12 @@
 			{/each}
 		</div>
 		<div class="flex items-center gap-2">
+			<button
+				onclick={openTimer}
+				class="py-0.5 text-sm text-nav-text hover:text-nav-active-text hover:bg-nav-hover px-1.5"
+			>
+				Open Timer
+			</button>
 			<button
 				onclick={logout}
 				class="py-0.5 text-sm text-nav-text hover:text-nav-active-text hover:bg-nav-hover px-1.5"

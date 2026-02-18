@@ -18,4 +18,12 @@
 	--color-nav-hover: #E2F0FF;
 	--color-nav-active-bg: #ffffff;
 	--color-nav-active-text: #555555;
+	--color-bg-entry: #e6f2ff;
+	--color-border-entry: #f2f8ff;
+	--color-timer-bg-stopped: #ffcebe;
+	--color-timer-border-stopped: #c56346;
+	--color-timer-bg-paused: #fff3bf;
+	--color-timer-border-paused: #c9a227;
+	--color-timer-bg-running: #ccffbf;
+	--color-timer-border-running: #55c933;
 }

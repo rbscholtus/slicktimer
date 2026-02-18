@@ -18,6 +18,14 @@
 
 	const uid = $derived(user.current?.uid ?? '');
 
+	// Resize to default timer dimensions if the window is larger than expected
+	// (handles PWA launch and direct navigation — no-op in regular browser tabs)
+	$effect(() => {
+		if (window.outerWidth > 400 || window.outerHeight > 700) {
+			window.resizeTo(300, 640);
+		}
+	});
+
 	// Initialize timer (recover from page reload)
 	$effect(() => {
 		if (uid) timer.initTimer(uid);

@@ -51,7 +51,7 @@
 
 <div
 	class="group flex w-full items-center border-b border-border px-2 py-1 text-sm
-		{isRunning ? 'bg-timer-active/10' : isCompleted ? 'bg-bg-alt' : isActiveTask ? 'bg-text-secondary/8 hover:bg-text-secondary/12' : 'hover:bg-bg-alt'}"
+		{isRunning ? 'bg-timer-bg-running/50' : isCompleted ? 'bg-bg-alt' : isActiveTask ? 'bg-timer-bg-paused/50 hover:bg-timer-bg-paused/60' : 'hover:bg-bg-alt'}"
 >
 	<!-- Drag hint (visual only — dndzone allows drag from anywhere in the row) -->
 	<span class="mr-1 shrink-0 cursor-grab text-text-secondary opacity-0 group-hover:opacity-100 active:cursor-grabbing select-none">&#8942;&#8942;</span>

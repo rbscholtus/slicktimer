@@ -197,7 +197,7 @@
 </script>
 
 <svelte:head>
-	<title>SlickTimer — Reports</title>
+	<title>SlickTimer — Run Reports</title>
 </svelte:head>
 
 <div class="flex h-full flex-col overflow-hidden px-2 py-2">

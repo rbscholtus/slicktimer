@@ -44,7 +44,7 @@
 						onclick={() => openInMainWindow('/entries')}
 						class="px-1.5 py-0.5 text-sm text-nav-text hover:bg-nav-hover hover:text-primary"
 					>
-						Manage Data
+						Edit Entries
 					</button>
 					<button
 						onclick={() => openInMainWindow('/reports')}

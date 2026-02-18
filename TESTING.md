@@ -55,7 +55,7 @@ See [SLICKTIMER.md](SLICKTIMER.md) for the full requirements, data model, and im
   - [T36 — Inline tag parsing with # syntax](#t36--inline-tag-parsing-with--syntax)
   - [T37 — Completed task shows duration but is not clickable](#t37--completed-task-shows-duration-but-is-not-clickable)
   - [T38 — Previous task duration disappears when switching tasks](#t38--previous-task-duration-disappears-when-switching-tasks)
-  - [T39 — Big timer color: green when running, grey when idle](#t39--big-timer-color-green-when-running-grey-when-idle)
+  - [T39 — Timer bar background color changes with state](#t39--timer-bar-background-color-changes-with-state)
   - [T40 — Login and logout flow](#t40--login-and-logout-flow)
 - [Edit time entries](#edit-time-entries)
   - [T41 — Navigate to entries page and see today's entries](#t41--navigate-to-entries-page-and-see-todays-entries)
@@ -70,13 +70,47 @@ See [SLICKTIMER.md](SLICKTIMER.md) for the full requirements, data model, and im
   - [T50 — Cancel delete entry](#t50--cancel-delete-entry)
   - [T51 — Running entry shown with "(running)" indicator](#t51--running-entry-shown-with-running-indicator)
   - [T52 — Daily total accuracy](#t52--daily-total-accuracy)
+  - [T87 — Entry tags: all three tag sources displayed](#t87--entry-tags-all-three-tag-sources-displayed)
+  - [T88 — Entry tags: "No tags" when nothing anywhere](#t88--entry-tags-no-tags-when-nothing-anywhere)
+  - [T89 — Entry tags: duplicates shown per section](#t89--entry-tags-duplicates-shown-per-section)
 - [Navigation](#navigation)
   - [T53 — Home page nav when logged out](#t53--home-page-nav-when-logged-out)
   - [T54 — Home page nav when logged in](#t54--home-page-nav-when-logged-in)
-  - [T55 — Timer page nav (Manage Data / Run Reports)](#t55--timer-page-nav-manage-data--run-reports)
+  - [T55 — Timer page nav (Edit Entries / Run Reports)](#t55--timer-page-nav-edit-entries--run-reports)
   - [T56 — Nav links navigate correctly](#t56--nav-links-navigate-correctly)
-  - [T57 — Tasks and Projects stub pages](#t57--tasks-and-projects-stub-pages)
+  - [T57 — Edit Tasks and Edit Projects pages load correctly](#t57--edit-tasks-and-edit-projects-pages-load-correctly)
   - [T58 — Unauthenticated access to protected pages](#t58--unauthenticated-access-to-protected-pages)
+- [Entry form keyboard shortcuts](#entry-form-keyboard-shortcuts)
+  - [T59 — Ctrl+Enter saves new entry form](#t59--ctrlenter-saves-new-entry-form)
+  - [T60 — Ctrl+Enter saves edit entry form](#t60--ctrlenter-saves-edit-entry-form)
+  - [T61 — Auto-save on day navigation](#t61--auto-save-on-day-navigation)
+  - [T62 — Auto-save blocked on invalid form](#t62--auto-save-blocked-on-invalid-form)
+  - [T63 — New entry seconds are :00 and :59](#t63--new-entry-seconds-are-00-and-59)
+  - [T64 — Edit preserves original seconds when time unchanged](#t64--edit-preserves-original-seconds-when-time-unchanged)
+  - [T65 — Edit sets :00/:59 seconds when time changed](#t65--edit-sets-0059-seconds-when-time-changed)
+- [Edit Tasks](#edit-tasks)
+  - [T66 — Tasks page shows tasks grouped by project](#t66--tasks-page-shows-tasks-grouped-by-project)
+  - [T67 — Show/hide archived tasks toggle](#t67--showhide-archived-tasks-toggle)
+  - [T68 — Edit task name inline](#t68--edit-task-name-inline)
+  - [T69 — Edit task project (move to different project)](#t69--edit-task-project-move-to-different-project)
+  - [T70 — Edit task tags inline](#t70--edit-task-tags-inline)
+  - [T71 — Complete a task via checkbox on Edit Tasks page](#t71--complete-a-task-via-checkbox-on-edit-tasks-page)
+  - [T72 — Uncomplete a task via checkbox](#t72--uncomplete-a-task-via-checkbox)
+  - [T73 — Archive a task (active or completed)](#t73--archive-a-task-active-or-completed)
+  - [T74 — Cannot archive or complete a running task](#t74--cannot-archive-or-complete-a-running-task)
+  - [T75 — Un-archive a task](#t75--un-archive-a-task)
+  - [T76 — Delete task with time entry count confirmation](#t76--delete-task-with-time-entry-count-confirmation)
+- [Edit Projects](#edit-projects)
+  - [T77 — Projects page shows all projects](#t77--projects-page-shows-all-projects)
+  - [T78 — Edit project name and color inline](#t78--edit-project-name-and-color-inline)
+  - [T79 — Edit project tags inline](#t79--edit-project-tags-inline)
+  - [T80 — Complete all tasks in a project](#t80--complete-all-tasks-in-a-project)
+  - [T81 — Archive all tasks in a project](#t81--archive-all-tasks-in-a-project)
+  - [T82 — Cannot complete/archive-all if a task is running](#t82--cannot-completearchive-all-if-a-task-is-running)
+  - [T83 — Delete project: type-to-confirm, shows impact count](#t83--delete-project-type-to-confirm-shows-impact-count)
+  - [T84 — Delete project: button disabled until name matches](#t84--delete-project-button-disabled-until-name-matches)
+  - [T85 — Edit project: auto-save when switching to another project's edit form](#t85--edit-project-auto-save-when-switching-to-another-projects-edit-form)
+  - [T86 — Edit project: no Firestore write when nothing changed](#t86--edit-project-no-firestore-write-when-nothing-changed)
 
 ## Prerequisites
 
@@ -99,7 +133,7 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 | **Scenario**         | Clicking an active task starts a timer and creates a time entry in Firestore.                                                                                                                                                                              |
 | **Preconditions**    | No timer is running. At least one active task exists.                                                                                                                                                                                                      |
 | **Steps**            | 1. Click the name of an active task in the task list.                                                                                                                                                                                                      |
-| **Expected outcome** | The timer starts. The big timer clock turns green and begins counting up. The clicked task row is highlighted green. A time entry document is created in Firestore with `endTime: null`. The browser title updates to `[HH:MM:SS] Task Name - SlickTimer`. |
+| **Expected outcome** | The timer starts **immediately** (optimistic UI — no waiting for Firestore). The big timer clock turns green and begins counting up. The clicked task row is highlighted green. A time entry document is created in Firestore in the background with `endTime: null`. The browser title updates to `[HH:MM:SS] Task Name - SlickTimer`. |
 | **Actual outcome**   |                                                                                                                                                                                                                                                            |
 
 ### T02 — Stop a timer by clicking the running task
@@ -109,7 +143,7 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 | **Scenario**         | Clicking the currently running task stops the timer.                                                                                                                                                                                                                     |
 | **Preconditions**    | A timer is running on a task.                                                                                                                                                                                                                                            |
 | **Steps**            | 1. Click the name of the currently running (green-highlighted) task.                                                                                                                                                                                                     |
-| **Expected outcome** | The timer stops. The big timer clock turns grey and freezes. The task row loses its green highlight but retains a subtle grey tint (active-but-stopped). The time entry in Firestore is updated with `endTime` and `duration`. The browser title resets to `SlickTimer`. |
+| **Expected outcome** | The timer stops **immediately** (optimistic UI). The timer bar turns amber (paused state). The task row loses its green highlight and turns amber (active-but-stopped). The time entry in Firestore is updated with `endTime` and `duration` in the background. The browser title resets to `SlickTimer`. |
 | **Actual outcome**   |                                                                                                                                                                                                                                                                          |
 
 ### T03 — Switch timer to a different task
@@ -119,7 +153,7 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 | **Scenario**         | Clicking a different task stops the current timer and starts a new one.                                                                                                                                                                                                             |
 | **Preconditions**    | A timer is running on Task A. Task B exists in the task list.                                                                                                                                                                                                                       |
 | **Steps**            | 1. While Task A is timing, click Task B.                                                                                                                                                                                                                                            |
-| **Expected outcome** | Task A's timer stops (its time entry gets `endTime` and `duration` in Firestore). A new time entry is created for Task B. The green highlight moves from Task A to Task B. The big timer resets and starts counting from 0:00:00 for Task B. The browser title shows Task B's name. |
+| **Expected outcome** | Both changes happen **immediately** (optimistic UI). Task A's timer stops and Task B's timer starts with no perceptible delay. The green highlight moves from Task A to Task B instantly. The big timer resets and starts counting from 0:00:00 for Task B. Firestore writes for both entries happen in the background. The browser title shows Task B's name. |
 | **Actual outcome**   |                                                                                                                                                                                                                                                                                     |
 
 ### T04 — Play/Pause button resumes the last active task
@@ -127,7 +161,7 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 |                      |                                                                                                                                                                        |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Scenario**         | The play button resumes timing the most recently active task.                                                                                                          |
-| **Preconditions**    | A timer was running and was stopped (the task row shows a subtle grey tint).                                                                                           |
+| **Preconditions**    | A timer was running and was stopped (the timer bar and task row show an amber tint — paused state).                                                                    |
 | **Steps**            | 1. Stop a running timer by clicking the running task. 2. Click the play button next to the big timer.                                                                  |
 | **Expected outcome** | A new time entry is created for the previously active task. The timer starts again. The big timer turns green and counts from 0:00:00. The task row turns green again. |
 | **Actual outcome**   |                                                                                                                                                                        |
@@ -490,15 +524,15 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 | **Expected outcome** | Task A's inline duration display disappears (it is no longer the active task). Only Task B shows its running duration. |
 | **Actual outcome**   |                                                                                                                        |
 
-### T39 — Big timer color: green when running, grey when idle
+### T39 — Timer bar background color changes with state
 
-|                      |                                                                                                                                                             |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Scenario**         | The big timer clock changes color based on state.                                                                                                           |
-| **Preconditions**    | None.                                                                                                                                                       |
-| **Steps**            | 1. Observe the big timer when no timer is running. 2. Start a timer. 3. Observe the color. 4. Stop the timer.                                               |
-| **Expected outcome** | Idle: the timer text is grey. Running: the timer text turns green (`timer-active` color). Pomodoro overtime: the timer turns orange (`notification` color). |
-| **Actual outcome**   |                                                                                                                                                             |
+|                      |                                                                                                                                                                                                                                                                                                                                              |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | The timer bar background and border color reflects the current timer state.                                                                                                                                                                                                                                                                  |
+| **Preconditions**    | None.                                                                                                                                                                                                                                                                                                                                        |
+| **Steps**            | 1. Open the timer with no task selected. 2. Click a task to select it without starting (paused state). 3. Start the timer. 4. Stop the timer (task remains selected). 5. Pomodoro: start a timer, enable pomodoro, wait for overtime.                                                                                                         |
+| **Expected outcome** | Stopped (no task selected): salmon background (`#ffcebe`) with salmon-red border (`#c56346`). Paused (task selected, timer stopped): amber background (`#fff3bf`) with amber border (`#c9a227`). Running: green background (`#ccffbf`) with green border (`#55c933`). Pomodoro overtime: timer text turns orange; bar background remains green. |
+| **Actual outcome**   |                                                                                                                                                                                                                                                                                                                                              |
 
 ### T40 — Login and logout flow
 
@@ -519,7 +553,7 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 | **Scenario**         | The entries page shows today's time entries in chronological order.                                                                                                                                                                              |
 | **Preconditions**    | At least one completed time entry exists for today.                                                                                                                                                                                              |
 | **Steps**            | 1. Click "Entries" in the nav bar.                                                                                                                                                                                                               |
-| **Expected outcome** | The entries page loads showing today's date. Time entries are listed in chronological order (earliest first). Each entry shows start time, end time, duration, task name, project name, tags, and comment. A daily total is shown at the bottom. |
+| **Expected outcome** | The entries page loads showing today's date in the center of the header. "+ New Entry" is at the far left, entry count and total time at the far right. Time entries are listed in chronological order (earliest first) in rounded light-blue boxes. Each entry uses a compact 3-column layout: left — task name (bold) and project name on the same line, tags and comment below; middle — time range and duration; right — Edit · Delete buttons on one line. |
 | **Actual outcome**   |                                                                                                                                                                                                                                                  |
 
 ### T42 — Navigate between days
@@ -529,7 +563,7 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 | **Scenario**         | Clicking the previous/next arrows changes the displayed day.                                                                                                                  |
 | **Preconditions**    | Time entries exist on at least two different days.                                                                                                                            |
 | **Steps**            | 1. On the entries page, click the left arrow to go to the previous day. 2. Click the right arrow to return.                                                                   |
-| **Expected outcome** | The date header updates. Entries for the selected day are shown. If no entries exist for a day, "No entries for this day." is displayed. The daily total updates accordingly. |
+| **Expected outcome** | The date header updates. Entries for the selected day are shown. If no entries exist for a day, "No entries for this day." is displayed. The daily total updates accordingly. When viewing today, the label reads "Today · [weekday]" (e.g. "Today · Wed"). Yesterday shows "Yesterday · Tue", tomorrow shows "Tomorrow · Thu". All other dates show the locale-formatted date (e.g. "Mon, Feb 16, 2026" in en-US). |
 | **Actual outcome**   |                                                                                                                                                                               |
 
 ### T43 — Create a new manual time entry
@@ -556,10 +590,10 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 
 |                      |                                                                           |
 | -------------------- | ------------------------------------------------------------------------- |
-| **Scenario**         | Clicking Cancel closes the new entry form without saving.                 |
-| **Preconditions**    | The new entry form is open with data entered.                             |
-| **Steps**            | 1. Open the new entry form. 2. Fill in some fields. 3. Click "Cancel".    |
-| **Expected outcome** | The form closes. No entry is created. The "+ New Entry" button reappears. |
+| **Scenario**         | Clicking Cancel or pressing Escape closes the new entry form without saving. |
+| **Preconditions**    | The new entry form is open with data entered.                                |
+| **Steps**            | 1. Open the new entry form. 2. Fill in some fields. 3. Click "Cancel". 4. Open the form again. 5. Press **Escape**. |
+| **Expected outcome** | In both cases, the form closes. No entry is created. The "+ New Entry" link reappears. |
 | **Actual outcome**   |                                                                           |
 
 ### T46 — Edit an existing time entry
@@ -586,10 +620,10 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 
 |                      |                                                                                          |
 | -------------------- | ---------------------------------------------------------------------------------------- |
-| **Scenario**         | Clicking Cancel on the edit form discards changes.                                       |
-| **Preconditions**    | The edit form is open for an existing entry with changes made.                           |
-| **Steps**            | 1. Click "Edit" on an entry. 2. Modify the start time. 3. Click "Cancel".                |
-| **Expected outcome** | The edit form closes. The entry retains its original values. No Firestore update occurs. |
+| **Scenario**         | Clicking Cancel or pressing Escape on the edit form discards changes.                                   |
+| **Preconditions**    | The edit form is open for an existing entry with changes made.                                          |
+| **Steps**            | 1. Click "Edit" on an entry. 2. Modify the start time. 3. Click "Cancel". 4. Click "Edit" again. 5. Press **Escape**. |
+| **Expected outcome** | In both cases, the edit form closes. The entry retains its original values. No Firestore update occurs. |
 | **Actual outcome**   |                                                                                          |
 
 ### T49 — Delete a time entry
@@ -598,7 +632,7 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Scenario**         | Deleting a time entry removes it from the list and Firestore.                                                                                                                      |
 | **Preconditions**    | At least one completed time entry exists.                                                                                                                                          |
-| **Steps**            | 1. Click "Del" on an entry. 2. Confirm by clicking "Yes".                                                                                                                          |
+| **Steps**            | 1. Click "Delete" on an entry. 2. Confirm by clicking "Yes".                                                                                                                       |
 | **Expected outcome** | An inline confirmation appears: "Delete this entry? Yes / No". After confirming, the entry disappears from the list. The daily total updates. The entry is deleted from Firestore. |
 | **Actual outcome**   |                                                                                                                                                                                    |
 
@@ -606,10 +640,10 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 
 |                      |                                                                              |
 | -------------------- | ---------------------------------------------------------------------------- |
-| **Scenario**         | Clicking "No" on the delete confirmation cancels the deletion.               |
-| **Preconditions**    | The delete confirmation is showing for an entry.                             |
-| **Steps**            | 1. Click "Del" on an entry. 2. Click "No".                                   |
-| **Expected outcome** | The confirmation disappears. The entry remains in the list and in Firestore. |
+| **Scenario**         | Clicking "No" or pressing Escape on the delete confirmation cancels the deletion. |
+| **Preconditions**    | The delete confirmation is showing for an entry.                                  |
+| **Steps**            | 1. Click "Delete" on an entry. 2. Click "No". 3. Click "Delete" again. 4. Press **Escape**. |
+| **Expected outcome** | In both cases, the confirmation disappears. The entry remains in the list and in Firestore. |
 | **Actual outcome**   |                                                                              |
 
 ### T51 — Running entry shown with "(running)" indicator
@@ -619,18 +653,48 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 | **Scenario**         | A currently running time entry is displayed with a "(running)" indicator instead of an end time.                                                                                             |
 | **Preconditions**    | A timer is currently running (started from the timer page).                                                                                                                                  |
 | **Steps**            | 1. Start a timer on the timer page. 2. Navigate to the entries page.                                                                                                                         |
-| **Expected outcome** | The running entry appears in the list with its start time and a green "(running)" label instead of an end time. No Edit or Del buttons are shown for running entries (or they are disabled). |
+| **Expected outcome** | The running entry appears in the list with its start time and a green "(running)" label instead of an end time. No Edit or Delete buttons are shown for running entries (or they are disabled). |
 | **Actual outcome**   |                                                                                                                                                                                              |
 
 ### T52 — Daily total accuracy
 
 |                      |                                                                                                                                         |
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| **Scenario**         | The daily total at the bottom sums only completed entries.                                                                              |
-| **Preconditions**    | Multiple completed time entries exist for today, and optionally a running entry.                                                        |
-| **Steps**            | 1. View the entries page for today. 2. Note the daily total. 3. Manually sum the durations of all completed entries.                    |
-| **Expected outcome** | The displayed total matches the manual sum. Running entries are not included in the total. The total format is "Xh Ym" (e.g. "2h 15m"). |
+| **Scenario**         | The daily total sums only completed entries and durations round to the nearest minute.                                                                              |
+| **Preconditions**    | Multiple completed time entries exist for today, including one short entry (e.g. 13:55:00–13:55:59 = 59 seconds). A running entry may also exist. |
+| **Steps**            | 1. View the entries page for today. 2. Note the duration shown for the short (59-second) entry. 3. Note the daily total.                           |
+| **Expected outcome** | The 59-second entry shows "1m" (rounded up). The daily total rounds the full sum to the nearest minute. Running entries are not included. Format is "Xh Ym" or "Ym". |
 | **Actual outcome**   |                                                                                                                                         |
+
+### T87 — Entry tags: all three tag sources displayed
+
+|                      |                                                                                                                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | A time entry with its own tags, a parent task with tags, and a parent project with tags shows all three sources in the tags line.                                              |
+| **Preconditions**    | A project tagged `#client` has a task tagged `#billable`. A time entry on that task has tag `#urgent`. Navigate to the entries page and find that entry.                       |
+| **Steps**            | 1. View the entry row. 2. Observe the tags line below the task/project names.                                                                                                  |
+| **Expected outcome** | The tags line reads: `#urgent · From Task: #billable · From Project: #client`. All three sections appear in order, separated by `·`.                                           |
+| **Actual outcome**   |                                                                                                                                                                                |
+
+### T88 — Entry tags: "No tags" when nothing anywhere
+
+|                      |                                                                                                                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | A time entry with no entry-level tags, on a task with no tags, in a project with no tags shows "No tags".                                                           |
+| **Preconditions**    | A project with no tags has a task with no tags. A time entry on that task also has no tags. Navigate to the entries page.                                            |
+| **Steps**            | 1. Find the entry with no tags. 2. Observe the tags line.                                                                                                            |
+| **Expected outcome** | The tags line shows "No tags" in muted text.                                                                                                                         |
+| **Actual outcome**   |                                                                                                                                                                      |
+
+### T89 — Entry tags: duplicates shown per section
+
+|                      |                                                                                                                                                                                          |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | When the same tag appears at the entry level, task level, and project level, it is shown in each section separately rather than de-duplicated.                                           |
+| **Preconditions**    | A project tagged `#billable` has a task also tagged `#billable`. A time entry on that task is also tagged `#billable`. Navigate to the entries page.                                     |
+| **Steps**            | 1. Find the entry. 2. Observe the tags line.                                                                                                                                             |
+| **Expected outcome** | The tags line reads: `#billable · From Task: #billable · From Project: #billable`. The tag appears once per section — no de-duplication occurs across sections.                         |
+| **Actual outcome**   |                                                                                                                                                                                          |
 
 ## Navigation
 
@@ -641,7 +705,7 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 | **Scenario**         | The Home page shows a minimal nav with Login when not authenticated.                                                                                      |
 | **Preconditions**    | User is not logged in.                                                                                                                                    |
 | **Steps**            | 1. Navigate to `/`.                                                                                                                                       |
-| **Expected outcome** | The blue nav bar shows "Home" as the active tab and "Login" at the far right. No other nav links are shown. The Getting Started content is visible below. |
+| **Expected outcome** | The blue nav bar shows "Home" as the active tab and "Login" at the far right. No other nav links are shown. The marketing copy is visible below with a "start the clock" link. |
 | **Actual outcome**   |                                                                                                                                                           |
 
 ### T54 — Home page nav when logged in
@@ -651,18 +715,18 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 | **Scenario**         | The Home page shows the full nav when authenticated.                                                                                                      |
 | **Preconditions**    | User is logged in.                                                                                                                                        |
 | **Steps**            | 1. Navigate to `/`.                                                                                                                                       |
-| **Expected outcome** | The blue nav bar shows Home (active), Entries, Tasks, Projects, Reports links, and Logout at the far right. The Getting Started content is visible below. |
+| **Expected outcome** | The blue nav bar shows Home (active), Edit Entries, Edit Tasks, Edit Projects, Run Reports links, Open Timer and Logout at the far right. The marketing copy is visible below. |
 | **Actual outcome**   |                                                                                                                                                           |
 
-### T55 — Timer page nav (Manage Data / Run Reports)
+### T55 — Timer page nav (Edit Entries / Run Reports)
 
-|                      |                                                                                                                                                                                                                                            |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Scenario**         | The timer page shows a custom nav with Manage Data, Run Reports, and Logout.                                                                                                                                                               |
-| **Preconditions**    | User is logged in.                                                                                                                                                                                                                         |
-| **Steps**            | 1. Open the timer via "Open Timer" on the Home page. 2. Click "Manage Data". 3. Click "Run Reports".                                                                                                                                      |
-| **Expected outcome** | The timer nav shows "Manage Data", "Run Reports" (left), and "Logout" (right). Clicking "Manage Data" opens `/entries` in the main browser window. Clicking "Run Reports" opens `/reports` in the main browser window. No "Home" link shown. |
-| **Actual outcome**   |                                                                                                                                                                                                                                            |
+|                      |                                                                                                                                                                                                                                                  |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | The timer page shows a custom nav with Edit Entries, Run Reports, and Logout.                                                                                                                                                                    |
+| **Preconditions**    | User is logged in.                                                                                                                                                                                                                               |
+| **Steps**            | 1. Open the timer via "Open Timer" on the Home page. 2. Click "Edit Entries". 3. Click "Run Reports".                                                                                                                                            |
+| **Expected outcome** | The timer nav shows "Edit Entries", "Run Reports" (left), and "Logout" (right). Clicking "Edit Entries" opens `/entries` in the main browser window. Clicking "Run Reports" opens `/reports` in the main browser window. No "Home" link shown. |
+| **Actual outcome**   |                                                                                                                                                                                                                                                  |
 
 ### T56 — Nav links navigate correctly
 
@@ -670,19 +734,19 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Scenario**         | All nav links navigate to their correct pages.                                                                                                                 |
 | **Preconditions**    | User is logged in.                                                                                                                                             |
-| **Steps**            | 1. From any non-timer page, click each nav link: Home, Entries, Tasks, Projects, Reports. 2. Verify the correct page loads and the active tab updates.          |
-| **Expected outcome** | Home→`/`, Entries→`/entries`, Tasks→`/tasks`, Projects→`/projects`, Reports→`/reports`. The clicked link becomes the active tab (white background, grey text). |
+| **Steps**            | 1. From any non-timer page, click each nav link: Home, Entries, Tasks, Projects, Reports. 2. Click "Open Timer". 3. Verify the correct page loads and the active tab updates. |
+| **Expected outcome** | Home→`/`, Edit Entries→`/entries`, Edit Tasks→`/tasks`, Edit Projects→`/projects`, Run Reports→`/reports`. The clicked link becomes the active tab (white background, grey text). "Open Timer" opens `/timer` in a popup window (not in the current tab). |
 | **Actual outcome**   |                                                                                                                                                                |
 
-### T57 — Tasks and Projects stub pages
+### T57 — Edit Tasks and Edit Projects pages load correctly
 
-|                      |                                                                                                                                         |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| **Scenario**         | Tasks and Projects pages show stub content.                                                                                             |
-| **Preconditions**    | User is logged in.                                                                                                                      |
-| **Steps**            | 1. Navigate to `/tasks`. 2. Navigate to `/projects`.                                                                                    |
-| **Expected outcome** | Each page shows a centered heading ("Tasks" or "Projects") with "Coming soon." text below it. The nav bar shows the correct active tab. |
-| **Actual outcome**   |                                                                                                                                         |
+|                      |                                                                                                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Edit Tasks and Edit Projects pages load with real data.                                                                                                       |
+| **Preconditions**    | User is logged in with at least one project and task.                                                                                                         |
+| **Steps**            | 1. Navigate to `/tasks`. 2. Navigate to `/projects`.                                                                                                          |
+| **Expected outcome** | `/tasks` shows tasks grouped by project with checkboxes and Edit · Archive · Delete buttons. `/projects` shows each project with a color swatch, task counts, and actions. |
+| **Actual outcome**   |                                                                                                                                                               |
 
 ### T58 — Unauthenticated access to protected pages
 
@@ -693,3 +757,289 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 | **Steps**            | 1. Navigate to `/timer`. 2. Navigate to `/entries`. 3. Navigate to `/tasks`. 4. Navigate to `/projects`. 5. Navigate to `/reports`. |
 | **Expected outcome** | All five pages redirect to `/login`.                                                                                                |
 | **Actual outcome**   |                                                                                                                                     |
+
+## Entry form keyboard shortcuts
+
+### T59 — Ctrl+Enter saves new entry form
+
+|                      |                                                                                                                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Pressing Ctrl+Enter (or Cmd+Enter on Mac) saves the new entry form.                                                                                                 |
+| **Preconditions**    | The new entry form is open with valid data entered (task selected, start and end times).                                                                             |
+| **Steps**            | 1. Click "+ New Entry". 2. Select a task, enter start time 09:00 and end time 09:30. 3. Press **Ctrl+Enter** (or **Cmd+Enter** on Mac).                              |
+| **Expected outcome** | The entry is saved. The form closes. The new entry appears in the list.                                                                                              |
+| **Actual outcome**   |                                                                                                                                                                      |
+
+### T60 — Ctrl+Enter saves edit entry form
+
+|                      |                                                                                                                                          |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Pressing Ctrl+Enter (or Cmd+Enter on Mac) saves the edit entry form.                                                                    |
+| **Preconditions**    | The edit form is open for an existing entry.                                                                                             |
+| **Steps**            | 1. Click "Edit" on an entry. 2. Change the comment text. 3. Press **Ctrl+Enter** (or **Cmd+Enter** on Mac).                             |
+| **Expected outcome** | The entry is updated. The edit form closes. The updated comment appears in the entry row.                                                |
+| **Actual outcome**   |                                                                                                                                          |
+
+### T61 — Auto-save on day navigation
+
+|                      |                                                                                                                                                                                                                 |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Navigating to the previous or next day auto-saves the open form.                                                                                                                                                |
+| **Preconditions**    | An edit or new entry form is open with valid data.                                                                                                                                                              |
+| **Steps**            | 1. Open the new entry form and fill in valid data (task, start 09:00, end 09:30). 2. Click the right arrow to go to the next day.                                                                               |
+| **Expected outcome** | The form is saved before navigating. The entry appears in the previous day's list. The next day's entries are shown.                                                                                             |
+| **Actual outcome**   |                                                                                                                                                                                                                 |
+
+### T62 — Auto-save blocked on invalid form
+
+|                      |                                                                                                                                           |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Navigating to another day is blocked when the open form has validation errors.                                                            |
+| **Preconditions**    | The new entry form is open with invalid data (e.g. no task selected).                                                                     |
+| **Steps**            | 1. Open the new entry form. 2. Enter start and end times but do not select a task. 3. Click the left arrow to go to the previous day.     |
+| **Expected outcome** | Navigation is blocked. The validation error "Please select a task." is shown. The date does not change.                                   |
+| **Actual outcome**   |                                                                                                                                           |
+
+### T63 — New entry seconds are :00 and :59
+
+|                      |                                                                                                                                                                            |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | New entries save start time with :00 seconds and end time with :59 seconds.                                                                                                |
+| **Preconditions**    | At least one active task exists.                                                                                                                                           |
+| **Steps**            | 1. Create a new entry with start 09:00 and end 09:30. 2. Check Firestore for the created entry.                                                                           |
+| **Expected outcome** | The `startTime` Timestamp has seconds = 00. The `endTime` Timestamp has seconds = 59. The duration is 1859 seconds (30 min 59 sec), not 1800.                             |
+| **Actual outcome**   |                                                                                                                                                                            |
+
+### T64 — Edit preserves original seconds when time unchanged
+
+|                      |                                                                                                                                                                            |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Editing an entry without changing start/end times preserves the original seconds.                                                                                           |
+| **Preconditions**    | An entry exists with specific seconds values (e.g. startTime at :15 seconds).                                                                                              |
+| **Steps**            | 1. Click "Edit" on an entry. 2. Change only the comment. 3. Click "Save". 4. Check Firestore.                                                                             |
+| **Expected outcome** | The `startTime` and `endTime` seconds are unchanged from their original values. Only the comment is updated.                                                               |
+| **Actual outcome**   |                                                                                                                                                                            |
+
+### T65 — Edit sets :00/:59 seconds when time changed
+
+|                      |                                                                                                                                                                            |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Editing an entry and changing a time field applies :00 (start) or :59 (end) seconds.                                                                                       |
+| **Preconditions**    | An entry exists.                                                                                                                                                           |
+| **Steps**            | 1. Click "Edit" on an entry. 2. Change the start time to a different value. 3. Leave the end time unchanged. 4. Click "Save". 5. Check Firestore.                         |
+| **Expected outcome** | The `startTime` seconds are 00 (because start time was changed). The `endTime` seconds are unchanged (because end time was not changed).                                   |
+| **Actual outcome**   |                                                                                                                                                                            |
+
+## Edit Tasks
+
+### T66 — Tasks page shows tasks grouped by project
+
+|                      |                                                                                                                                                    |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | The Edit Tasks page shows all tasks grouped under their project, with project tags and entry stats.                                                                                   |
+| **Preconditions**    | User is logged in with at least two projects and several tasks, some with time entries.                                                                                               |
+| **Steps**            | 1. Navigate to `/tasks`.                                                                                                                                                              |
+| **Expected outcome** | Each project appears as a section header (color swatch + project name + project tags). Tasks appear below with a checkbox, name, tags, entry count + total time, and action buttons. |
+| **Actual outcome**   |                                                                                                                                                    |
+
+### T67 — Show/hide archived tasks toggle
+
+|                      |                                                                                                                             |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Archived tasks are hidden by default and revealed by the toggle.                                                            |
+| **Preconditions**    | At least one archived task exists.                                                                                          |
+| **Steps**            | 1. Navigate to `/tasks`. 2. Confirm archived tasks are not shown. 3. Click "Show archived". 4. Click "Hide archived".       |
+| **Expected outcome** | Archived tasks appear with muted/italic "archived" label when toggle is on, and disappear when toggled off.                 |
+| **Actual outcome**   |                                                                                                                             |
+
+### T68 — Edit task name inline
+
+|                      |                                                                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Clicking Edit on a task opens an inline form; saving updates the task name.                                                  |
+| **Preconditions**    | At least one active task exists.                                                                                             |
+| **Steps**            | 1. Click "Edit" on a task. 2. Change the name. 3. Click Save (or press Ctrl+Enter).                                         |
+| **Expected outcome** | The form closes. The task row shows the new name. Firestore is updated.                                                      |
+| **Actual outcome**   |                                                                                                                              |
+
+### T69 — Edit task project (move to different project)
+
+|                      |                                                                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Changing a task's project in the edit form moves it to the new project's group.                                              |
+| **Preconditions**    | At least two projects exist. At least one task exists.                                                                       |
+| **Steps**            | 1. Click "Edit" on a task. 2. Change the project select to a different project. 3. Save.                                    |
+| **Expected outcome** | The task disappears from its original project group and appears under the new project group.                                  |
+| **Actual outcome**   |                                                                                                                              |
+
+### T70 — Edit task tags inline
+
+|                      |                                                                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Editing tags updates the task's tag list.                                                                                    |
+| **Preconditions**    | A task exists.                                                                                                               |
+| **Steps**            | 1. Click "Edit" on a task. 2. Change the tags field to "billable, client". 3. Save.                                         |
+| **Expected outcome** | The task row shows "#billable #client" tags. Firestore shows `tags: ["billable", "client"]`.                                 |
+| **Actual outcome**   |                                                                                                                              |
+
+### T71 — Complete a task via checkbox on Edit Tasks page
+
+|                      |                                                                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | Checking the checkbox on an active task marks it as completed.                                                                                    |
+| **Preconditions**    | At least one active task exists.                                                                                                                  |
+| **Steps**            | 1. Check the checkbox on an active task.                                                                                                          |
+| **Expected outcome** | The task name gets a strikethrough. The Archive and Delete buttons remain visible. Firestore shows `status: "completed"` with a `completedAt` timestamp. |
+| **Actual outcome**   |                                                                                                                                |
+
+### T72 — Uncomplete a task via checkbox
+
+|                      |                                                                                                                  |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Unchecking a completed task restores it to active.                                                               |
+| **Preconditions**    | At least one completed task exists.                                                                              |
+| **Steps**            | 1. Uncheck the checkbox on a completed task.                                                                     |
+| **Expected outcome** | Strikethrough is removed. Archive button disappears. Firestore shows `status: "active"` and `completedAt: null`. |
+| **Actual outcome**   |                                                                                                                  |
+
+### T73 — Archive a task (active or completed)
+
+|                      |                                                                                                                                                                                                |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Clicking Archive on any non-archived task archives it (completing it first if active).                                                                                                         |
+| **Preconditions**    | At least one active task and one completed task exist.                                                                                                                                         |
+| **Steps**            | 1. Click "Archive" on an active task. 2. Click "Archive" on a completed task.                                                                                                                  |
+| **Expected outcome** | Both tasks disappear from the default view. The previously active task has `completedAt` set. Both show "archived" label when "Show archived" is toggled on. Firestore shows `status: "archived"`. |
+| **Actual outcome**   |                                                                                                                                                                                                |
+
+### T74 — Cannot archive or complete a running task
+
+|                      |                                                                                                                                                       |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Attempting to complete or archive a running task shows an error.                                                                                      |
+| **Preconditions**    | A task is currently running in the timer popup.                                                                                                       |
+| **Steps**            | 1. On the Edit Tasks page, try to check the checkbox of the running task. 2. Try to click "Archive" on the running task.                              |
+| **Expected outcome** | An inline error appears: "Task is currently running. Stop the timer first." The task status does not change in either case.                           |
+| **Actual outcome**   |                                                                                                                                                       |
+
+### T75 — Un-archive a task
+
+|                      |                                                                                                                        |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Clicking "Un-archive" on an archived task restores it to active.                                                       |
+| **Preconditions**    | At least one archived task exists. "Show archived" toggle is on.                                                       |
+| **Steps**            | 1. Click "Un-archive" on an archived task.                                                                             |
+| **Expected outcome** | The task becomes active and appears in the default view (without archived toggle). Firestore shows `status: "active"`. |
+| **Actual outcome**   |                                                                                                                        |
+
+### T76 — Delete task with time entry count confirmation
+
+|                      |                                                                                                                                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Deleting a task shows the count of time entries that will also be deleted.                                                                                          |
+| **Preconditions**    | A task exists with at least one time entry.                                                                                                                         |
+| **Steps**            | 1. Click "Delete" on a task. 2. Read the confirmation message. 3. Click "Yes, delete".                                                                              |
+| **Expected outcome** | Confirmation shows: "Delete [task name]? This will also delete X time entries." After confirming, the task and all its time entries are deleted from Firestore. |
+| **Actual outcome**   |                                                                                                                                                                     |
+
+## Edit Projects
+
+### T77 — Projects page shows all projects
+
+|                      |                                                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | The Edit Projects page lists all projects with color, name, task counts by status, and actions.                                                                                              |
+| **Preconditions**    | User is logged in with at least one project containing tasks in various states.                                                                                                              |
+| **Steps**            | 1. Navigate to `/projects`.                                                                                                                                                                  |
+| **Expected outcome** | Each project shows a color swatch, name, task counts (active/completed/archived — "0 tasks" if empty), tags, and buttons: Edit · Complete all · Archive all · Delete. Rows use the light-blue entry card style. |
+| **Actual outcome**   |                                                                                                                                      |
+
+### T78 — Edit project name and color inline
+
+|                      |                                                                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Clicking Edit opens an inline form with color picker and name field.                                                 |
+| **Preconditions**    | At least one project exists.                                                                                         |
+| **Steps**            | 1. Click "Edit" on a project. 2. Change the name and color. 3. Click Save (or press Ctrl+Enter).                    |
+| **Expected outcome** | The form closes. The project row shows the new name and updated color swatch. Firestore is updated.                  |
+| **Actual outcome**   |                                                                                                                      |
+
+### T79 — Edit project tags inline
+
+|                      |                                                                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Editing project tags updates the tag list.                                                                           |
+| **Preconditions**    | A project exists.                                                                                                    |
+| **Steps**            | 1. Click "Edit" on a project. 2. Enter "billable, internal" in the tags field. 3. Save.                             |
+| **Expected outcome** | The project row shows "#billable #internal". Firestore shows `tags: ["billable", "internal"]`.                       |
+| **Actual outcome**   |                                                                                                                      |
+
+### T80 — Complete all tasks in a project
+
+|                      |                                                                                                                                    |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | "Complete all" marks all active tasks in the project as completed. The button is disabled when no active tasks exist.                         |
+| **Preconditions**    | A project has at least two active tasks. No task is currently running.                                                                       |
+| **Steps**            | 1. Verify "Complete all" is disabled on a project with 0 active tasks. 2. Click "Complete all" on a project with active tasks. 3. Read the confirmation. 4. Click "Yes, complete all". |
+| **Expected outcome** | All active tasks are set to `completed`. The active count drops to 0 and the completed count increases. Tasks appear with strikethrough in Edit Tasks. |
+| **Actual outcome**   |                                                                                                                                    |
+
+### T81 — Archive all tasks in a project
+
+|                      |                                                                                                                                         |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | "Archive all" archives all non-archived (active + completed) tasks. Disabled only when all tasks are already archived (or none exist). |
+| **Preconditions**    | A project has at least two tasks in mixed states (active, completed). No task is currently running.                                   |
+| **Steps**            | 1. Verify "Archive all" is disabled on a project with 0 active and 0 completed tasks. 2. Verify "Archive all" is enabled on a project with only completed tasks. 3. Click "Archive all". 4. Read the confirmation — it says "active and completed tasks". 5. Click "Yes, archive all". |
+| **Expected outcome** | All non-archived tasks are archived. The project no longer appears in the timer task list. Active and completed counts drop to 0; archived count increases. |
+| **Actual outcome**   |                                                                                                                                         |
+
+### T82 — Cannot complete/archive-all if a task is running
+
+|                      |                                                                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | "Complete all" and "Archive all" are blocked if any task in the project is currently running.                                |
+| **Preconditions**    | A task in the project is currently running in the timer popup.                                                               |
+| **Steps**            | 1. Click "Complete all" on the project containing the running task.                                                          |
+| **Expected outcome** | An inline error appears: "[task name] is currently running. Stop the timer first." No tasks are modified.                    |
+| **Actual outcome**   |                                                                                                                              |
+
+### T83 — Delete project: type-to-confirm, shows impact count
+
+|                      |                                                                                                                                              |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Clicking Delete on a project shows the count of tasks and time entries that will be deleted, with a type-to-confirm input.                    |
+| **Preconditions**    | A project exists with at least one task and one time entry.                                                                                  |
+| **Steps**            | 1. Click "Delete" on a project.                                                                                                              |
+| **Expected outcome** | Inline form shows: "Delete [name]? This will permanently delete X tasks and Y time entries." A text input is shown with placeholder = project name. |
+| **Actual outcome**   |                                                                                                                                              |
+
+### T84 — Delete project: button disabled until name matches
+
+|                      |                                                                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | The Delete button is disabled until the user types the exact project name.                                                      |
+| **Preconditions**    | The delete confirmation is open for a project named "My Project".                                                               |
+| **Steps**            | 1. Type "my project" (wrong case). 2. Type "My Project" (exact match). 3. Click "Delete project".                              |
+| **Expected outcome** | The button remains disabled for wrong/partial input. It enables only when input matches exactly. After confirming, the project, all its tasks, and all time entries are deleted. |
+| **Actual outcome**   |                                                                                                                                 |
+
+### T85 — Edit project: auto-save when switching to another project's edit form
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | Clicking Edit on a second project while the first is being edited auto-saves any changes to the first.                                                                                    |
+| **Preconditions**    | At least two projects exist.                                                                                                                                                               |
+| **Steps**            | 1. Click "Edit" on project A. 2. Change the name to something new. 3. Click "Edit" on project B (without saving A first).                                                                 |
+| **Expected outcome** | Project A's edit form closes and its new name is saved (Firestore updated). Project B's edit form opens immediately. No explicit Save click was needed for project A.                      |
+| **Actual outcome**   |                                                                                                                                                                                            |
+
+### T86 — Edit project: no Firestore write when nothing changed
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | Clicking Save (or switching away) without making any changes does not write to Firestore.                                                                                                  |
+| **Preconditions**    | At least one project exists. Firestore network tab is open in browser DevTools.                                                                                                            |
+| **Steps**            | 1. Click "Edit" on a project. 2. Do not change anything. 3. Click Save (or Ctrl+Enter).                                                                                                   |
+| **Expected outcome** | The form closes. No Firestore write request is made. The project's `updatedAt` timestamp is unchanged.                                                                                     |
+| **Actual outcome**   |                                                                                                                                                                                            |
