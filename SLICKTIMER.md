@@ -16,6 +16,8 @@ The demo of the original SlimTimer is here: https://www.youtube.com/watch?v=Ceed
   - [Task management](#task-management)
   - [Tags](#tags)
   - [Edit Time Entries screen](#edit-time-entries-screen)
+  - [Edit Tasks screen](#edit-tasks-screen)
+  - [Edit Projects screen](#edit-projects-screen)
   - [Reporting screen](#reporting-screen)
 - [Visual design and styling](#visual-design-and-styling)
   - [Design philosophy](#design-philosophy)
@@ -212,31 +214,31 @@ All visual design decisions are encoded as Tailwind v4 design tokens via `@theme
 
 The default palette uses the same hue families as the original SlimTimer but with slightly reduced saturation for a cleaner, modern feel.
 
-| Role             | Color                 | Tailwind token    | Usage                                                     |
-| ---------------- | --------------------- | ----------------- | --------------------------------------------------------- |
-| Primary          | Soft sky blue         | `primary`         | Top navigation bar, active nav links, section headers     |
-| Timer active     | Softened green        | `timer-active`    | Active/running timer indicator, start button              |
-| Timer stopped    | Softened red          | `timer-stopped`   | Stopped timer state, stop indicator                       |
-| Notification     | Softened orange/amber | `notification`    | Pomodoro alerts, idle notifications, warning states       |
-| Background       | White                 | `bg-primary`      | Main content area                                         |
-| Background alt   | Very light grey       | `bg-alt`          | Alternating table rows (zebra striping), card backgrounds |
-| Text primary     | Near-black            | `text-primary`    | Body text, task names                                     |
-| Text secondary   | Medium grey           | `text-secondary`  | Timestamps, metadata, secondary labels                    |
-| Border           | Light grey            | `border`          | Input borders, table dividers, section separators         |
-| Edit/create area | Soft green tint       | `bg-edit`         | Background for edit modals and create forms               |
-| Nav bar          | Light blue            | `nav-bar`         | Navigation bar background (matches original SlimTimer)    |
-| Nav text         | White                 | `nav-text`        | Navigation link text color                                |
-| Nav hover        | Very light blue       | `nav-hover`       | Navigation link hover background                          |
-| Nav active bg    | White                 | `nav-active-bg`   | Currently active navigation tab background                |
-| Nav active text  | Medium grey           | `nav-active-text` | Currently active navigation tab text                      |
-| Entry background | Light blue            | `bg-entry`        | Time entry card background (matches SlimTimer edit page)  |
-| Entry border     | Very light blue       | `border-entry`    | Time entry card border                                    |
-| Timer bar stopped bg | Salmon            | `timer-bg-stopped`    | Timer bar background when no task is selected         |
-| Timer bar stopped border | Salmon-red    | `timer-border-stopped`| Timer bar border when no task is selected             |
-| Timer bar paused bg | Amber              | `timer-bg-paused`     | Timer bar background when task selected but paused    |
-| Timer bar paused border | Dark amber     | `timer-border-paused` | Timer bar border when task selected but paused        |
-| Timer bar running bg | Green              | `timer-bg-running`    | Timer bar background when timer is actively running   |
-| Timer bar running border | Green         | `timer-border-running`| Timer bar border when timer is actively running       |
+| Role                     | Color                 | Tailwind token         | Usage                                                     |
+| ------------------------ | --------------------- | ---------------------- | --------------------------------------------------------- |
+| Primary                  | Soft sky blue         | `primary`              | Top navigation bar, active nav links, section headers     |
+| Timer active             | Softened green        | `timer-active`         | Active/running timer indicator, start button              |
+| Timer stopped            | Softened red          | `timer-stopped`        | Stopped timer state, stop indicator                       |
+| Notification             | Softened orange/amber | `notification`         | Pomodoro alerts, idle notifications, warning states       |
+| Background               | White                 | `bg-primary`           | Main content area                                         |
+| Background alt           | Very light grey       | `bg-alt`               | Alternating table rows (zebra striping), card backgrounds |
+| Text primary             | Near-black            | `text-primary`         | Body text, task names                                     |
+| Text secondary           | Medium grey           | `text-secondary`       | Timestamps, metadata, secondary labels                    |
+| Border                   | Light grey            | `border`               | Input borders, table dividers, section separators         |
+| Edit/create area         | Soft green tint       | `bg-edit`              | Background for edit modals and create forms               |
+| Nav bar                  | Light blue            | `nav-bar`              | Navigation bar background (matches original SlimTimer)    |
+| Nav text                 | White                 | `nav-text`             | Navigation link text color                                |
+| Nav hover                | Very light blue       | `nav-hover`            | Navigation link hover background                          |
+| Nav active bg            | White                 | `nav-active-bg`        | Currently active navigation tab background                |
+| Nav active text          | Medium grey           | `nav-active-text`      | Currently active navigation tab text                      |
+| Entry background         | Light blue            | `bg-entry`             | Time entry card background (matches SlimTimer edit page)  |
+| Entry border             | Very light blue       | `border-entry`         | Time entry card border                                    |
+| Timer bar stopped bg     | Salmon                | `timer-bg-stopped`     | Timer bar background when no task is selected             |
+| Timer bar stopped border | Salmon-red            | `timer-border-stopped` | Timer bar border when no task is selected                 |
+| Timer bar paused bg      | Amber                 | `timer-bg-paused`      | Timer bar background when task selected but paused        |
+| Timer bar paused border  | Dark amber            | `timer-border-paused`  | Timer bar border when task selected but paused            |
+| Timer bar running bg     | Green                 | `timer-bg-running`     | Timer bar background when timer is actively running       |
+| Timer bar running border | Green                 | `timer-border-running` | Timer bar border when timer is actively running           |
 
 **Alternate themes** (future, config-only switches):
 - **Bold/Vibrant**: Original SlimTimer colors — saturated orange, bright red, lime green.
@@ -460,7 +462,8 @@ slicktimer/
 │           ├── format.ts           # Duration/time formatting helpers
 │           └── dates.ts            # Date range helpers (week, month, etc.)
 ├── static/
-│   ├── favicon.png
+│   ├── favicon.ico
+│   ├── apple-touch-icon.png        # iOS home screen icon (referenced in app.html)
 │   ├── icon-192.png                # PWA icon
 │   └── icon-512.png                # PWA icon
 ├── svelte.config.js                # SvelteKit config (adapter-static, SPA mode)
@@ -477,203 +480,46 @@ slicktimer/
 
 ### Key configuration files
 
-**`svelte.config.js`** — SPA mode, no SSR:
-```javascript
-import adapter from '@sveltejs/adapter-static';
-import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
+**`svelte.config.js`** — Configures `@sveltejs/adapter-static` with `fallback: '200.html'` for SPA mode. Disables SvelteKit's built-in service worker registration since `@vite-pwa` handles that.
 
-export default {
-  preprocess: vitePreprocess(),
-  kit: {
-    adapter: adapter({ fallback: '200.html' }),
-    serviceWorker: { register: false },  // @vite-pwa handles this
-  },
-};
-```
+**`vite.config.ts`** — Registers three Vite plugins: `@tailwindcss/vite` (processes Tailwind v4 CSS), `@sveltejs/kit/vite` (SvelteKit integration), and `@vite-pwa/sveltekit` (PWA manifest and Workbox service worker). The PWA manifest declares `start_url: '/timer'`, `display: 'standalone'`, and references the 192×192 and 512×512 PNG icons. The `apple-touch-icon.png` is not in the manifest — it is referenced via a `<link rel="apple-touch-icon">` tag in `src/app.html` instead, which is the correct approach for iOS home screen icons.
 
-**`vite.config.ts`** — Tailwind v4 + PWA:
-```typescript
-import tailwindcss from '@tailwindcss/vite';
-import { sveltekit } from '@sveltejs/kit/vite';
-import { SvelteKitPWA } from '@vite-pwa/sveltekit';
-import { defineConfig } from 'vite';
+**`src/routes/+layout.ts`** — Exports `ssr = false` and `prerender = false` to disable server-side rendering across the entire app. All Firebase interaction is client-side only.
 
-export default defineConfig({
-  plugins: [
-    tailwindcss(),
-    sveltekit(),
-    SvelteKitPWA({
-      registerType: 'autoUpdate',
-      manifest: {
-        name: 'SlickTimer',
-        short_name: 'SlickTimer',
-        start_url: '/timer',
-        display: 'standalone',
-        background_color: '#ffffff',
-        theme_color: '#4a90d9',
-        icons: [
-          { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
-        ],
-      },
-    }),
-  ],
-});
-```
+**`firebase.json`** — Points Firebase Hosting at the `build/` output directory and adds a catch-all SPA rewrite to `200.html`. Also references `firestore.rules` and `firestore.indexes.json` for Firestore configuration.
 
-**`src/routes/+layout.ts`** — disable SSR:
-```typescript
-export const ssr = false;
-export const prerender = false;
-```
-
-**`firebase.json`** — Firestore config + static hosting with SPA rewrite:
-```json
-{
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  },
-  "hosting": {
-    "public": "build",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [{ "source": "**", "destination": "/200.html" }]
-  }
-}
-```
-
-**`.env`** — Firebase config (all `PUBLIC_` for client-side access):
-```
-PUBLIC_FIREBASE_API_KEY=...
-PUBLIC_FIREBASE_AUTH_DOMAIN=...
-PUBLIC_FIREBASE_PROJECT_ID=...
-PUBLIC_FIREBASE_STORAGE_BUCKET=...
-PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
-PUBLIC_FIREBASE_APP_ID=...
-```
+**`.env`** — Contains the six Firebase client SDK config values, all prefixed with `PUBLIC_` so SvelteKit exposes them to the browser via `$env/static/public`. Never committed to version control.
 
 ### Firebase wrappers (replacing SvelteFire)
 
 Since SvelteFire is unmaintained and incompatible with Svelte 5, the app uses custom wrappers built with Svelte 5 runes. These are thin — roughly 100 lines total.
 
-**`src/lib/firebase/config.ts`** — Firebase initialization:
-```typescript
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore, enablePersistence } from 'firebase/firestore';
-import { PUBLIC_FIREBASE_API_KEY, /* ... */ } from '$env/static/public';
+**`src/lib/firebase/config.ts`** — Reads the six Firebase config values from `$env/static/public`, initializes the Firebase app (guarded against double-initialization), enables Firestore offline persistence, and exports `auth` and `db` for use throughout the app.
 
-const config = { apiKey: PUBLIC_FIREBASE_API_KEY, /* ... */ };
-const app = getApps().length ? getApp() : initializeApp(config);
+**`src/lib/firebase/auth.svelte.ts`** — Holds `user` and `loading` as module-level `$state` values, updated by a single `onAuthStateChanged` listener. Exports `getUser()`, which returns a reactive object with `current` (the `User | null`) and `loading` getters.
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+**`src/lib/firebase/firestore.svelte.ts`** — Exports three reactive wrappers:
+- `useDoc(path: string)` — subscribes to a single Firestore document via `onSnapshot` and returns `{ data, loading }`.
+- `useCollection(getPath: () => string | null)` — subscribes to a collection path returned by a getter function. When the getter returns `null` (e.g. user not yet loaded), it immediately sets `loading = false` with empty data and skips the subscription. Accepts a getter function rather than a direct value to avoid infinite reactive loops.
+- `useQuery(getQuery: () => Query | null)` — same pattern as `useCollection` but for arbitrary Firestore `Query` objects (e.g. filtered or ordered queries).
 
-// Enable offline persistence (call once)
-enablePersistence(db).catch(() => {});
-```
-
-**`src/lib/firebase/auth.svelte.ts`** — reactive auth state:
-```typescript
-import { onAuthStateChanged, type User } from 'firebase/auth';
-import { auth } from './config';
-
-let user = $state<User | null>(null);
-let loading = $state(true);
-
-onAuthStateChanged(auth, (u) => {
-  user = u;
-  loading = false;
-});
-
-export function getUser() {
-  return {
-    get current() { return user; },
-    get loading() { return loading; },
-  };
-}
-```
-
-**`src/lib/firebase/firestore.svelte.ts`** — reactive Firestore bindings:
-```typescript
-import { onSnapshot, doc, collection, type DocumentData } from 'firebase/firestore';
-import { db } from './config';
-
-export function useDoc<T = DocumentData>(path: string) {
-  let data = $state<T | null>(null);
-  let loading = $state(true);
-
-  $effect(() => {
-    const unsub = onSnapshot(doc(db, path), (snap) => {
-      data = snap.exists() ? (snap.data() as T) : null;
-      loading = false;
-    });
-    return unsub;
-  });
-
-  return { get data() { return data; }, get loading() { return loading; } };
-}
-
-export function useCollection<T = DocumentData>(getPath: () => string | null) {
-  let data = $state<T[]>([]);
-  let loading = $state(true);
-
-  $effect(() => {
-    const path = getPath();
-    if (!path) { data = []; loading = false; return; }
-    loading = true;
-    const unsub = onSnapshot(collection(db, path), (snap) => {
-      data = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as T);
-      loading = false;
-    });
-    return unsub;
-  });
-
-  return { get data() { return data; }, get loading() { return loading; } };
-}
-```
+All wrappers use `$effect` internally so subscriptions are automatically set up and torn down with the component lifecycle.
 
 ### Tailwind v4 theming
 
-Design tokens are defined in `src/app.css` using `@theme` (Tailwind v4 syntax — no `tailwind.config.js`):
-
-```css
-@import 'tailwindcss';
-
-@theme {
-  --color-primary: #4a90d9;
-  --color-timer-active: #5cb85c;
-  --color-timer-stopped: #d9534f;
-  --color-notification: #e8943a;
-  --color-bg-primary: #ffffff;
-  --color-bg-alt: #f7f8fa;
-  --color-bg-edit: #eef7ee;
-  --color-text-primary: #1a1a1a;
-  --color-text-secondary: #6b7280;
-  --color-border: #d1d5db;
-  --color-nav-bar: #7EBAFF;
-  --color-nav-text: #ffffff;
-  --color-nav-hover: #E2F0FF;
-  --color-nav-active-bg: #ffffff;
-  --color-nav-active-text: #555555;
-  --color-bg-entry: #e6f2ff;
-  --color-border-entry: #f2f8ff;
-}
-```
-
-To switch themes, only these values need to change. The markup stays the same.
+Design tokens are defined in `src/app.css` using the Tailwind v4 `@theme` directive — there is no `tailwind.config.js`. The file imports `tailwindcss` and then declares all color tokens as CSS custom properties (e.g. `--color-primary`, `--color-nav-bar`, `--color-bg-entry`, `--color-timer-bg-running`, etc.) covering the full palette described in the [Color palette](#color-palette-default-theme-softened-functional) section above. These tokens are then available as Tailwind utility classes throughout the markup (e.g. `bg-entry`, `border-nav-bar`). To switch themes, only the token values in `src/app.css` need to change — no markup changes are required.
 
 ### Routing and navigation
 
-| Route       | Page         | Auth required | Description                                          |
-| ----------- | ------------ | ------------- | ---------------------------------------------------- |
-| `/`         | Home         | No            | Public landing page, auth-aware nav                  |
-| `/login`    | Login        | No            | Firebase Auth login (email + social providers)       |
-| `/timer`    | Timer        | Yes           | Timer sidebar: task list, timer display, daily total |
-| `/entries`  | Edit entries | Yes           | Day view of time entries with inline editing         |
-| `/tasks`    | Edit Tasks   | Yes           | Inline task editing: name, project, tags, status, delete |
-| `/projects` | Edit Projects| Yes           | Inline project editing: name, color, tags, bulk actions, delete |
-| `/reports`  | Reports      | Yes           | Pivot table and timesheet with filters               |
+| Route       | Page          | Auth required | Description                                                     |
+| ----------- | ------------- | ------------- | --------------------------------------------------------------- |
+| `/`         | Home          | No            | Public landing page, auth-aware nav                             |
+| `/login`    | Login         | No            | Firebase Auth login (email + social providers)                  |
+| `/timer`    | Timer         | Yes           | Timer sidebar: task list, timer display, daily total            |
+| `/entries`  | Edit entries  | Yes           | Day view of time entries with inline editing                    |
+| `/tasks`    | Edit Tasks    | Yes           | Inline task editing: name, project, tags, status, delete        |
+| `/projects` | Edit Projects | Yes           | Inline project editing: name, color, tags, bulk actions, delete |
+| `/reports`  | Reports       | Yes           | Pivot table and timesheet with filters                          |
 
 Authenticated pages (`/timer`, `/entries`, `/tasks`, `/projects`, `/reports`) live inside a `(app)` route group that shares an auth-guarded layout with the Nav bar. The `(app)` group does not affect URLs.
 
@@ -704,4 +550,4 @@ Not needed at this stage: Cloud Functions, Firebase Storage, Realtime Database, 
 
 ## Manual testing
 
-See [TESTING.md](TESTING.md) for the full manual test plan (T01–T58).
+See [TESTING.md](TESTING.md) for the full manual test plan.
