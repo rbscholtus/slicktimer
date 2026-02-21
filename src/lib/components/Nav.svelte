@@ -2,6 +2,9 @@
 	import { page } from '$app/stores';
 	import { signOut } from 'firebase/auth';
 	import { auth } from '$lib/firebase/config';
+	import { getUser } from '$lib/firebase/auth.svelte';
+
+	const user = getUser();
 
 	const links = [
 		{ href: '/', label: 'Home' },
@@ -22,7 +25,11 @@
 
 <nav class="bg-nav-bar px-2 py-0">
 	<div class="flex items-center justify-between">
-		<div class="flex">
+		<div class="flex items-center gap-1">
+			<a href="/" class="mr-1 flex items-center gap-1 py-0.5">
+				<img src="/favicon-32x32.png" alt="SlickTimer" class="h-5 w-5" />
+				<span class="text-sm tracking-wide text-white">SLICK<span class="font-bold">TIMER</span></span>
+			</a>
 			{#each links as link}
 				{#if $page.url.pathname === link.href}
 					<span
@@ -33,7 +40,7 @@
 				{:else}
 					<a
 						href={link.href}
-						class="px-1.5 py-0.5 text-sm text-nav-text hover:border-x hover:border-t hover:border-nav-hover hover:bg-nav-hover hover:text-primary"
+						class="border-x border-t border-transparent px-1.5 py-0.5 text-sm text-nav-text hover:border-nav-hover hover:bg-nav-hover hover:text-primary"
 					>
 						{link.label}
 					</a>
@@ -47,6 +54,9 @@
 			>
 				Open Timer
 			</button>
+			{#if user.current?.email}
+				<span class="text-sm text-nav-text opacity-70">{user.current.email}</span>
+			{/if}
 			<button
 				onclick={logout}
 				class="py-0.5 text-sm text-nav-text hover:text-nav-active-text hover:bg-nav-hover px-1.5"

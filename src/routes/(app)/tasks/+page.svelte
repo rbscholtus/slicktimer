@@ -276,12 +276,6 @@
 								{#if editingId === task.id}
 									<!-- Edit form -->
 									<div class="space-y-1">
-										<input
-											type="text"
-											bind:value={editName}
-											class="w-full border border-border px-1 py-0.5 text-sm"
-											placeholder="Task name"
-										/>
 										<select
 											bind:value={editProjectId}
 											class="w-full border border-border px-1 py-0.5 text-sm"
@@ -290,6 +284,12 @@
 												<option value={p.id}>{p.name}</option>
 											{/each}
 										</select>
+										<input
+											type="text"
+											bind:value={editName}
+											class="w-full border border-border px-1 py-0.5 text-sm"
+											placeholder="Task name"
+										/>
 										<input
 											type="text"
 											bind:value={editTagsStr}

@@ -3,8 +3,6 @@
 	import { getUser } from '$lib/firebase/auth.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { signOut } from 'firebase/auth';
-	import { auth } from '$lib/firebase/config';
 
 	let { children } = $props();
 	const user = getUser();
@@ -26,9 +24,6 @@
 		}
 	}
 
-	function logout() {
-		signOut(auth);
-	}
 </script>
 
 {#if user.loading}
@@ -38,29 +33,23 @@
 {:else if user.current}
 	{#if isTimer}
 		<nav class="bg-nav-bar px-2 py-0">
-			<div class="flex items-center justify-between">
-				<div class="flex">
-					<button
-						onclick={() => openInMainWindow('/entries')}
-						class="px-1.5 py-0.5 text-sm text-nav-text hover:bg-nav-hover hover:text-primary"
-					>
-						Edit Entries
-					</button>
-					<button
-						onclick={() => openInMainWindow('/reports')}
-						class="px-1.5 py-0.5 text-sm text-nav-text hover:bg-nav-hover hover:text-primary"
-					>
-						Run Reports
-					</button>
-				</div>
-				<div class="flex items-center gap-2">
-					<button
-						onclick={logout}
-						class="py-0.5 text-sm text-nav-text hover:text-nav-active-text hover:bg-nav-hover px-1.5"
-					>
-						Logout
-					</button>
-				</div>
+			<div class="flex items-center">
+				<span class="mr-2 flex items-center gap-1 py-0.5">
+					<img src="/favicon-32x32.png" alt="SlickTimer" class="h-5 w-5" />
+					<span class="text-sm tracking-wide text-white">SLICK<span class="font-bold">TIMER</span></span>
+				</span>
+				<button
+					onclick={() => openInMainWindow('/entries')}
+					class="px-1.5 py-0.5 text-sm text-nav-text hover:bg-nav-hover hover:text-primary"
+				>
+					Entries
+				</button>
+				<button
+					onclick={() => openInMainWindow('/reports')}
+					class="px-1.5 py-0.5 text-sm text-nav-text hover:bg-nav-hover hover:text-primary"
+				>
+					Reports
+				</button>
 			</div>
 		</nav>
 	{:else}

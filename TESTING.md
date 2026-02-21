@@ -17,6 +17,13 @@ See [SLICKTIMER.md](SLICKTIMER.md) for the full requirements, data model, and im
   - [T07 — Daily total in the big timer](#t07--daily-total-in-the-big-timer)
   - [T08 — Per-task duration display (today's total)](#t08--per-task-duration-display-todays-total)
   - [T09 — Duration toggle (daily total vs. current entry)](#t09--duration-toggle-daily-total-vs-current-entry)
+  - [T90 — Midnight split: entry splits when timer crosses midnight](#t90--midnight-split-entry-splits-when-timer-crosses-midnight)
+  - [T91 — Midnight split: comment is duplicated to new entry](#t91--midnight-split-comment-is-duplicated-to-new-entry)
+  - [T92 — Midnight split: timer stops normally after split](#t92--midnight-split-timer-stops-normally-after-split)
+  - [T93 — Midnight split: daily totals are accurate](#t93--midnight-split-daily-totals-are-accurate)
+  - [T94 — Rapid task switching: no orphaned entries](#t94--rapid-task-switching-no-orphaned-entries)
+  - [T95 — Immediate pause after start: entry is properly closed](#t95--immediate-pause-after-start-entry-is-properly-closed)
+  - [T96 — Rapid toggle: start and stop same task repeatedly](#t96--rapid-toggle-start-and-stop-same-task-repeatedly)
 - [Pomodoro mode](#pomodoro-mode)
   - [T10 — Pomodoro mode toggle](#t10--pomodoro-mode-toggle)
   - [T11 — Pomodoro countdown reaches zero](#t11--pomodoro-countdown-reaches-zero)
@@ -111,6 +118,27 @@ See [SLICKTIMER.md](SLICKTIMER.md) for the full requirements, data model, and im
   - [T84 — Delete project: button disabled until name matches](#t84--delete-project-button-disabled-until-name-matches)
   - [T85 — Edit project: auto-save when switching to another project's edit form](#t85--edit-project-auto-save-when-switching-to-another-projects-edit-form)
   - [T86 — Edit project: no Firestore write when nothing changed](#t86--edit-project-no-firestore-write-when-nothing-changed)
+- [Reports](#reports)
+  - [T97 — Date formatting uses human-friendly format](#t97--date-formatting-uses-human-friendly-format)
+  - [T98 — Dropdowns are wide enough (no text/arrow overlap)](#t98--dropdowns-are-wide-enough-no-textarrow-overlap)
+  - [T99 — "Filters:" and "Show:" labels appear](#t99--filters-and-show-labels-appear)
+  - [T100 — Display options checkboxes present and functional](#t100--display-options-checkboxes-present-and-functional)
+  - [T101 — "This Week" shows Mon-Fri columns even with missing data](#t101--this-week-shows-mon-fri-columns-even-with-missing-data)
+  - [T102 — "This Week" includes Sat/Sun if weekend data exists](#t102--this-week-includes-satsun-if-weekend-data-exists)
+  - [T103 — "Last Week" shows Mon-Fri columns even with missing data](#t103--last-week-shows-mon-fri-columns-even-with-missing-data)
+  - [T104 — "Time Entry" option in Rows dropdown](#t104--time-entry-option-in-rows-dropdown)
+  - [T105 — Group By dropdown with 5 options](#t105--group-by-dropdown-with-5-options)
+  - [T106 — Grouped pivot table: Project → Task → Date](#t106--grouped-pivot-table-project--task--date)
+  - [T107 — Clicking group header expands/collapses rows](#t107--clicking-group-header-expandscollapses-rows)
+  - [T108 — All groups expanded by default](#t108--all-groups-expanded-by-default)
+  - [T109 — Group By = Date, Rows = Entry shows entries grouped by date](#t109--group-by--date-rows--entry-shows-entries-grouped-by-date)
+  - [T110 — Group By = Tags shows entries grouped by tag](#t110--group-by--tags-shows-entries-grouped-by-tag)
+  - [T111 — Conflict prevention: Group By vs Rows vs Columns](#t111--conflict-prevention-group-by-vs-rows-vs-columns)
+  - [T112 — Group subtotals and grand total are correct](#t112--group-subtotals-and-grand-total-are-correct)
+  - [T113 — CSV export works with grouped pivot table](#t113--csv-export-works-with-grouped-pivot-table)
+  - [T114 — Unchecking "Column Total" hides footer row](#t114--unchecking-column-total-hides-footer-row)
+  - [T115 — Unchecking "Group Subtotals" hides subtotal rows](#t115--unchecking-group-subtotals-hides-subtotal-rows)
+  - [T116 — Unchecking "Row Total" hides rightmost "Total" column](#t116--unchecking-row-total-hides-rightmost-total-column)
 
 ## Prerequisites
 
@@ -183,7 +211,7 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 | **Scenario**         | Time entries shorter than 10 seconds are discarded.                                                                                                  |
 | **Preconditions**    | No timer is running.                                                                                                                                 |
 | **Steps**            | 1. Click a task to start timing. 2. Immediately (within a few seconds) click the same task to stop, or click a different task.                       |
-| **Expected outcome** | The time entry is deleted from Firestore because its duration is less than 10 seconds. No short entry appears in the daily summary or task duration. |
+| **Expected outcome** | The time entry's `endTime` is written first (so it never remains as a running entry), then the entry is deleted from Firestore because its duration is less than 10 seconds. No short entry appears in the daily summary or task duration. |
 | **Actual outcome**   |                                                                                                                                                      |
 
 ### T07 — Daily total in the big timer
@@ -215,6 +243,106 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 | **Steps**            | 1. While a task is running, click the duration readout on its task row. 2. Click it again.                                                                                                                        |
 | **Expected outcome** | First click: switches from daily total to current entry elapsed (a smaller number). Second click: switches back to daily total. The toggle resets to daily total when the timer stops or a different task starts. |
 | **Actual outcome**   |                                                                                                                                                                                                                   |
+
+### T90 — Midnight split: entry splits when timer crosses midnight
+
+|                      |                                                                                                                                                                                                                                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | When a timer is running and midnight occurs, the current entry is automatically closed and a new entry is started for the new day.                                                                                                                                  |
+| **Preconditions**    | Timer is running before midnight (or use browser dev tools to simulate by changing system time).                                                                                                                                                                    |
+| **Steps**            | 1. Start a timer at 23:55 (or set system time to 23:58). 2. Wait for or simulate midnight crossing. 3. Go to Edit Entries and check entries for both days.                                                                                                         |
+| **Expected outcome** | At midnight, the original entry is closed with an `endTime` at 23:59:59 and duration calculated from start to midnight. A new entry is created for the new day starting at 00:00:00 with the same task, project, tags, and comment. Timer continues ticking seamlessly in the UI with no visible interruption. |
+| **Actual outcome**   |                                                                                                                                                                                                                                                                     |
+
+### T91 — Midnight split: comment is duplicated to new entry
+
+|                      |                                                                                                                                                                                                                        |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | When a timer with a comment crosses midnight, the comment is copied to the new day's entry.                                                                                                                            |
+| **Preconditions**    | Timer is running before midnight with a comment saved.                                                                                                                                                                 |
+| **Steps**            | 1. Start a timer and add a comment (e.g., "Working on midnight feature"). 2. Wait for or simulate midnight crossing. 3. Check Edit Entries for both the previous day's entry and the current day's entry.              |
+| **Expected outcome** | Both entries (before midnight and after midnight) show the same comment: "Working on midnight feature". The comment field in the timer UI remains unchanged and editable.                                              |
+| **Actual outcome**   |                                                                                                                                                                                                                        |
+
+### T92 — Midnight split: timer stops normally after split
+
+|                      |                                                                                                                                                                                                 |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | After a midnight split, the timer can be stopped normally and the new day's entry is saved correctly.                                                                                           |
+| **Preconditions**    | Timer has crossed midnight and is now running on the new day's entry.                                                                                                                           |
+| **Steps**            | 1. After midnight split has occurred, let timer run for a few minutes. 2. Stop the timer. 3. Check Edit Entries for the current day.                                                            |
+| **Expected outcome** | The current day's entry is saved with the correct `endTime` and `duration` (time from 00:00:00 to stop time). The entry appears in Edit Entries with all fields correct (task, project, tags, comment, duration). |
+| **Actual outcome**   |                                                                                                                                                                                                 |
+
+### T93 — Midnight split: daily totals are accurate
+
+|                      |                                                                                                                                                                                                                  |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | After a midnight split, both days' totals reflect only the time actually worked on each day.                                                                                                                     |
+| **Preconditions**    | Timer ran from 23:50 on Day 1 to 00:20 on Day 2 (30 minutes total: 10 min on Day 1, 20 min on Day 2).                                                                                                           |
+| **Steps**            | 1. Start timer at 23:50. 2. Wait for midnight split. 3. Stop timer at 00:20. 4. Check Edit Entries for Day 1 and Day 2. 5. Check daily totals on each day.                                                      |
+| **Expected outcome** | Day 1 shows entry: 23:50 - 23:59:59 (10 minutes). Day 1 total = 10 minutes. Day 2 shows entry: 00:00:00 - 00:20 (20 minutes). Day 2 total = 20 minutes. No entry shows 30 minutes attributed to a single day. |
+| **Actual outcome**   |                                                                                                                                                                                                                  |
+
+### T94 — Rapid task switching: no orphaned entries
+
+|                      |                                                                                                                                                                                                                                                                                    |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Rapidly switching between multiple tasks does not leave orphaned entries with `endTime: null`.                                                                                                                                                                                      |
+| **Preconditions**    | At least 3–4 active tasks exist. No timer is running. Firestore console is open to monitor `timeEntries`.                                                                                                                                                                          |
+| **Steps**            | 1. Click Task A. 2. Immediately click Task B (within 1 second). 3. Immediately click Task C. 4. Immediately click Task D. 5. Wait 2 seconds, then stop the timer. 6. Check Firestore for entries with `endTime: null`.                                                            |
+| **Expected outcome** | Only Task D's entry (the final running task) should have had `endTime: null` while running; after stopping, all entries have an `endTime`. Short entries (< 10 seconds) are deleted. No orphaned entries remain. The entries list on Edit Entries shows no stale "(running)" entries. |
+| **Actual outcome**   |                                                                                                                                                                                                                                                                                    |
+
+### T95 — Immediate pause after start: entry is properly closed
+
+|                      |                                                                                                                                                                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Pressing Play/Pause immediately after starting a task properly closes the entry.                                                                                                                                      |
+| **Preconditions**    | A task was previously timed (so the Play/Pause button can resume). No timer is running.                                                                                                                              |
+| **Steps**            | 1. Click a task to start timing. 2. Immediately click the Play/Pause button to stop (within 1 second). 3. Check Firestore for entries with `endTime: null`.                                                         |
+| **Expected outcome** | The entry is closed with `endTime` set, then deleted because its duration is less than 10 seconds. No orphaned entries with `endTime: null` remain in Firestore. The timer UI shows the stopped/paused state correctly. |
+| **Actual outcome**   |                                                                                                                                                                                                                      |
+
+### T96 — Rapid toggle: start and stop same task repeatedly
+
+|                      |                                                                                                                                                                                                  |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | Rapidly clicking the same task to start/stop/start/stop does not leave orphaned entries.                                                                                                          |
+| **Preconditions**    | At least one active task exists. No timer is running.                                                                                                                                            |
+| **Steps**            | 1. Click the same task 5+ times in rapid succession (each click toggles start/stop). 2. After the last click, wait 2 seconds. 3. Check Firestore for entries with `endTime: null`.               |
+| **Expected outcome** | All short entries (< 10 seconds) are deleted. If the final click started the timer, exactly one entry has `endTime: null`. If the final click stopped the timer, no entries have `endTime: null`. |
+| **Actual outcome**   |                                                                                                                                                                                                  |
+
+### T97 — Offline: start task without network
+
+|                      |                                                                                                                                                                                              |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Starting a task works immediately when the device is offline.                                                                                                                                |
+| **Preconditions**    | User is logged in and on the timer page. At least one active task exists. Disable Wi-Fi / network.                                                                                           |
+| **Steps**            | 1. Turn off Wi-Fi. 2. Click a task to start the timer. 3. Verify the timer starts counting immediately. 4. Turn Wi-Fi back on. 5. Check Firestore for the time entry.                       |
+| **Expected outcome** | Timer starts instantly while offline. After reconnecting, the entry appears in Firestore with correct `startTime` and `endTime: null`.                                                       |
+| **Actual outcome**   |                                                                                                                                                                                              |
+
+### T98 — Offline: switch tasks without network
+
+|                      |                                                                                                                                                                                              |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Switching between tasks works while offline.                                                                                                                                                 |
+| **Preconditions**    | User is logged in and on the timer page. Timer is running on a task. Wi-Fi is off.                                                                                                           |
+| **Steps**            | 1. Click a different task to switch. 2. Verify the timer resets and starts for the new task. 3. Turn Wi-Fi back on. 4. Check Firestore.                                                     |
+| **Expected outcome** | Task switch is instant while offline. After reconnecting, the previous entry has `endTime` set and the new entry exists with `endTime: null`.                                                |
+| **Actual outcome**   |                                                                                                                                                                                              |
+
+### T99 — Offline: stop timer without network
+
+|                      |                                                                                                                                                                                              |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scenario**         | Stopping a running timer works while offline.                                                                                                                                                |
+| **Preconditions**    | User is logged in. Timer is running. Wi-Fi is off.                                                                                                                                           |
+| **Steps**            | 1. Click the running task to stop it. 2. Verify the timer stops immediately. 3. Turn Wi-Fi back on. 4. Check Firestore.                                                                     |
+| **Expected outcome** | Timer stops instantly while offline. After reconnecting, the entry has `endTime` set and correct `duration`.                                                                                 |
+| **Actual outcome**   |                                                                                                                                                                                              |
 
 ## Pomodoro mode
 
@@ -573,7 +701,7 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 | **Scenario**         | A new time entry can be created manually for any day.                                                                                                                                                                                                                            |
 | **Preconditions**    | At least one active task exists.                                                                                                                                                                                                                                                 |
 | **Steps**            | 1. Click "+ New Entry". 2. Select a task from the dropdown. 3. Enter a start time (e.g. "09:00:00") and end time (e.g. "09:30:00"). 4. Optionally add a comment. 5. Click "Save".                                                                                                |
-| **Expected outcome** | The new entry appears in the list at the correct chronological position. The daily total updates. The form closes and resets. The entry is saved to Firestore with the correct `date`, `taskId`, `projectId`, `duration`, `tags` (inherited from task), `comment`, and `userId`. |
+| **Expected outcome** | The new entry appears in the list at the correct chronological position. The daily total updates. The form closes and resets. The entry is saved to Firestore with the correct `date`, `taskId`, `projectId`, `duration`, `tags` (copied from task), `comment`, and `userId`. |
 | **Actual outcome**   |                                                                                                                                                                                                                                                                                  |
 
 ### T44 — New entry form validation
@@ -666,34 +794,34 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 | **Expected outcome** | The 59-second entry shows "1m" (rounded up). The daily total rounds the full sum to the nearest minute. Running entries are not included. Format is "Xh Ym" or "Ym". |
 | **Actual outcome**   |                                                                                                                                         |
 
-### T87 — Entry tags: all three tag sources displayed
+### T87 — Tag copying chain: project → task → entry
 
 |                      |                                                                                                                                                                                |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Scenario**         | A time entry with its own tags, a parent task with tags, and a parent project with tags shows all three sources in the tags line.                                              |
-| **Preconditions**    | A project tagged `#client` has a task tagged `#billable`. A time entry on that task has tag `#urgent`. Navigate to the entries page and find that entry.                       |
-| **Steps**            | 1. View the entry row. 2. Observe the tags line below the task/project names.                                                                                                  |
-| **Expected outcome** | The tags line reads: `#urgent · From Task: #billable · From Project: #client`. All three sections appear in order, separated by `·`.                                           |
+| **Scenario**         | Tags are copied down the chain: project tags are copied into a new task, task tags are copied into a new time entry.                                                           |
+| **Preconditions**    | A project tagged `#client`. Create a new task in that project with `#billable` in the name.                                                                                    |
+| **Steps**            | 1. Create the task. 2. Check the task's tags on the Edit Tasks page. 3. Start a timer on that task. 4. Stop the timer. 5. Check the entry's tags on the Edit Entries page.     |
+| **Expected outcome** | The task has tags `#client #billable` (project tag copied + user tag). The time entry also has tags `#client #billable` (copied from task). Tags are shown as `#client #billable` on the entry — no "From Task" or "From Project" labels. |
 | **Actual outcome**   |                                                                                                                                                                                |
 
-### T88 — Entry tags: "No tags" when nothing anywhere
+### T88 — Entry tags: no tags when none exist
 
 |                      |                                                                                                                                                                      |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Scenario**         | A time entry with no entry-level tags, on a task with no tags, in a project with no tags shows "No tags".                                                           |
-| **Preconditions**    | A project with no tags has a task with no tags. A time entry on that task also has no tags. Navigate to the entries page.                                            |
-| **Steps**            | 1. Find the entry with no tags. 2. Observe the tags line.                                                                                                            |
-| **Expected outcome** | The tags line shows "No tags" in muted text.                                                                                                                         |
+| **Scenario**         | A time entry with no tags shows no tags line.                                                                                                                        |
+| **Preconditions**    | A project with no tags has a task with no tags. Start and stop a timer on that task. Navigate to the entries page.                                                    |
+| **Steps**            | 1. Find the entry. 2. Observe the area below the task/project names.                                                                                                 |
+| **Expected outcome** | No tags line is shown (no "No tags" text either — the line is simply absent).                                                                                        |
 | **Actual outcome**   |                                                                                                                                                                      |
 
-### T89 — Entry tags: duplicates shown per section
+### T89 — Entry tags: editable in edit form
 
 |                      |                                                                                                                                                                                          |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Scenario**         | When the same tag appears at the entry level, task level, and project level, it is shown in each section separately rather than de-duplicated.                                           |
-| **Preconditions**    | A project tagged `#billable` has a task also tagged `#billable`. A time entry on that task is also tagged `#billable`. Navigate to the entries page.                                     |
-| **Steps**            | 1. Find the entry. 2. Observe the tags line.                                                                                                                                             |
-| **Expected outcome** | The tags line reads: `#billable · From Task: #billable · From Project: #billable`. The tag appears once per section — no de-duplication occurs across sections.                         |
+| **Scenario**         | Tags on a time entry can be edited via the inline edit form.                                                                                                                             |
+| **Preconditions**    | A time entry with tags exists. Navigate to the entries page.                                                                                                                             |
+| **Steps**            | 1. Click "Edit" on the entry. 2. Observe the tags field next to the time fields. 3. Modify the tags (add/remove). 4. Click "Save".                                                      |
+| **Expected outcome** | The tags field shows current tags comma-separated. After saving, the entry displays the updated tags. Changes are saved to Firestore.                                                    |
 | **Actual outcome**   |                                                                                                                                                                                          |
 
 ## Navigation
@@ -1042,4 +1170,205 @@ For each test, record the **Actual outcome** after executing the steps. Leave it
 | **Preconditions**    | At least one project exists. Firestore network tab is open in browser DevTools.                                                                                                            |
 | **Steps**            | 1. Click "Edit" on a project. 2. Do not change anything. 3. Click Save (or Ctrl+Enter).                                                                                                   |
 | **Expected outcome** | The form closes. No Firestore write request is made. The project's `updatedAt` timestamp is unchanged.                                                                                     |
+| **Actual outcome**   |                                                                                                                                                                                            |
+## Reports
+
+### T97 — Date formatting uses human-friendly format
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | Pivot table column headers and timesheet dates use human-friendly format (e.g., "Sun, Feb 22").                                                                                            |
+| **Preconditions**    | Time entries exist spanning multiple days. Navigate to Reports page.                                                                                                                       |
+| **Steps**            | 1. Select "This Week" preset. 2. Verify pivot table column headers. 3. Switch to Timesheet view.                                                                                          |
+| **Expected outcome** | Pivot table date columns show "Mon, Feb 17", "Tue, Feb 18", etc. (no year if current year). Timesheet uses same format. No YYYY-MM-DD format visible.                                      |
+| **Actual outcome**   |                                                                                                                                                                                            |
+
+### T98 — Dropdowns are wide enough (no text/arrow overlap)
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | All dropdown controls have sufficient width to prevent text overlapping with dropdown arrow.                                                                                               |
+| **Preconditions**    | Navigate to Reports page.                                                                                                                                                                  |
+| **Steps**            | 1. Check Projects, Tags, Group By, Rows, and Columns dropdowns. 2. Select various options with longer names.                                                                              |
+| **Expected outcome** | All dropdowns use min-w-[120px] or min-w-[160px]. Text never overlaps with dropdown arrow icon. Dropdowns expand if content is wider than minimum.                                        |
+| **Actual outcome**   |                                                                                                                                                                                            |
+
+### T99 — "Filters:" and "Show:" labels appear
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | "Filters:" label appears before Project and Tags dropdowns. "Show:" label appears before display option checkboxes.                                                                        |
+| **Preconditions**    | Navigate to Reports page, Pivot Table view.                                                                                                                                                |
+| **Steps**            | 1. Observe the filters section. 2. Observe the display options section.                                                                                                                    |
+| **Expected outcome** | "Filters:" label is visible before Projects dropdown. "Show:" label is visible before "Column Total" checkbox. Both labels use font-medium styling.                                        |
+| **Actual outcome**   |                                                                                                                                                                                            |
+
+### T100 — Display options checkboxes present and functional
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | Three checkboxes control visibility of Column Total, Group Subtotals, and Row Total. All checked by default.                                                                               |
+| **Preconditions**    | Navigate to Reports page, Pivot Table view with data.                                                                                                                                      |
+| **Steps**            | 1. Verify all three checkboxes are checked. 2. Uncheck "Column Total". 3. Uncheck "Row Total". 4. Uncheck "Group Subtotals" (when Group By is active).                                    |
+| **Expected outcome** | Initially: footer row, rightmost column, and subtotal rows all visible. After unchecking: footer row hidden, rightmost column hidden, subtotal rows hidden respectively.                   |
+| **Actual outcome**   |                                                                                                                                                                                            |
+
+### T101 — "This Week" shows Mon-Fri columns even with missing data
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | When Columns = Date and preset = "This Week", Mon-Fri columns appear even if no data exists for some days.                                                                                 |
+| **Preconditions**    | Create time entries only for Monday and Wednesday of current week. Navigate to Reports.                                                                                                    |
+| **Steps**            | 1. Select "This Week" preset. 2. Set Columns = Date. 3. Verify column headers.                                                                                                            |
+| **Expected outcome** | Columns show Mon, Tue, Wed, Thu, Fri (with human-friendly dates). Tue, Thu, Fri cells are empty. No Sat/Sun columns (no weekend data).                                                     |
+| **Actual outcome**   |                                                                                                                                                                                            |
+
+### T102 — "This Week" includes Sat/Sun if weekend data exists
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | When weekend data exists, Sat and/or Sun columns are added to the week view.                                                                                                               |
+| **Preconditions**    | Create time entries for Monday and Saturday of current week. Navigate to Reports.                                                                                                          |
+| **Steps**            | 1. Select "This Week" preset. 2. Set Columns = Date. 3. Verify column headers.                                                                                                            |
+| **Expected outcome** | Columns show Mon, Tue, Wed, Thu, Fri, Sat (all with human-friendly dates). No Sun column (no Sunday data). Saturday column has data.                                                       |
+| **Actual outcome**   |                                                                                                                                                                                            |
+
+### T103 — "Last Week" shows Mon-Fri columns even with missing data
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | Same as T101 but for "Last Week" preset.                                                                                                                                                   |
+| **Preconditions**    | Create time entries only for Monday and Thursday of last week. Navigate to Reports.                                                                                                        |
+| **Steps**            | 1. Select "Last Week" preset. 2. Set Columns = Date. 3. Verify column headers.                                                                                                            |
+| **Expected outcome** | Columns show Mon-Fri of last week (human-friendly dates). Only Mon and Thu have data. No weekend columns.                                                                                  |
+| **Actual outcome**   |                                                                                                                                                                                            |
+
+### T104 — "Time Entry" option in Rows dropdown
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | Rows dropdown includes "Time Entry" option which displays individual time entries.                                                                                                         |
+| **Preconditions**    | Multiple time entries exist. Navigate to Reports, Pivot Table view.                                                                                                                        |
+| **Steps**            | 1. Set Rows = "Time Entry". 2. Set Columns = "Date" or "Project". 3. Verify row labels.                                                                                                   |
+| **Expected outcome** | Each row shows: start time (HH:MM format) + " - " + task name. Each entry becomes a separate row. Durations appear in cells.                                                              |
+| **Actual outcome**   |                                                                                                                                                                                            |
+
+### T105 — Group By dropdown with 5 options
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | Group By dropdown appears with options: None, Project, Task, Date, Tags.                                                                                                                   |
+| **Preconditions**    | Navigate to Reports, Pivot Table view.                                                                                                                                                     |
+| **Steps**            | 1. Locate Group By dropdown (before Rows dropdown). 2. Click it to view options.                                                                                                           |
+| **Expected outcome** | Dropdown shows 5 options in order: None (selected by default), Project, Task, Date, Tags.                                                                                                  |
+| **Actual outcome**   |                                                                                                                                                                                            |
+
+### T106 — Grouped pivot table: Project → Task → Date
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | Group By = Project, Rows = Task, Columns = Date shows tasks grouped by project with expand/collapse and subtotals.                                                                         |
+| **Preconditions**    | Multiple projects with tasks and time entries exist. Navigate to Reports.                                                                                                                  |
+| **Steps**            | 1. Set Group By = Project, Rows = Task, Columns = Date. 2. Observe table structure.                                                                                                       |
+| **Expected outcome** | Projects appear as bold group headers with ▼ icon. Tasks appear indented under each project. Each project header row shows group subtotals. Clicking header collapses/expands that group.  |
+| **Actual outcome**   |                                                                                                                                                                                            |
+
+### T107 — Clicking group header expands/collapses rows
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | Clicking a group header toggles visibility of rows within that group.                                                                                                                      |
+| **Preconditions**    | Group By is set to any non-None option. Groups are expanded (default state).                                                                                                               |
+| **Steps**            | 1. Click a group header. 2. Verify rows collapse. 3. Click again. 4. Verify rows expand.                                                                                                  |
+| **Expected outcome** | First click: ▼ changes to ▶, task rows disappear, only group header remains. Second click: ▶ changes to ▼, task rows reappear. Group subtotals always visible in header row.              |
+| **Actual outcome**   |                                                                                                                                                                                            |
+
+### T108 — All groups expanded by default
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | When Group By is first enabled or changed, all groups start in expanded state.                                                                                                             |
+| **Preconditions**    | Navigate to Reports with Group By = None.                                                                                                                                                  |
+| **Steps**            | 1. Change Group By to "Project". 2. Observe all groups. 3. Collapse one group. 4. Change Group By to "Task".                                                                              |
+| **Expected outcome** | When initially set to Project: all projects show ▼ and rows visible. After changing to Task: all tasks show ▼ and rows visible (previous collapse state is reset).                         |
+| **Actual outcome**   |                                                                                                                                                                                            |
+
+### T109 — Group By = Date, Rows = Entry shows entries grouped by date
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | Grouping by Date with Rows = Entry creates date-based groups with individual time entries as rows.                                                                                         |
+| **Preconditions**    | Time entries exist across multiple days. Navigate to Reports.                                                                                                                               |
+| **Steps**            | 1. Set Group By = Date, Rows = Entry, Columns = Project. 2. Observe table structure.                                                                                                      |
+| **Expected outcome** | Each date appears as a group header (human-friendly format). Individual entries (with start time + task name) appear indented under each date. Date subtotals sum all entries for that day. |
+| **Actual outcome**   |                                                                                                                                                                                            |
+
+### T110 — Group By = Tags shows entries grouped by tag
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | Group By = Tags creates one group per unique tag found in time entries.                                                                                                                    |
+| **Preconditions**    | Time entries exist with tags: #billable, #urgent. Some entries have both tags, some have one, some have none.                                                                              |
+| **Steps**            | 1. Set Group By = Tags, Rows = Task, Columns = Date. 2. Observe groups.                                                                                                                   |
+| **Expected outcome** | Groups: "#billable", "#urgent", "(No Tags)". Entries with multiple tags appear in multiple groups (duplicated across groups). Entries with no tags appear only in "(No Tags)" group.       |
+| **Actual outcome**   |                                                                                                                                                                                            |
+
+### T111 — Conflict prevention: Group By vs Rows vs Columns
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | Same field cannot be selected in Group By + Rows + Columns simultaneously. Auto-correction prevents conflicts.                                                                             |
+| **Preconditions**    | Navigate to Reports, Pivot Table view.                                                                                                                                                     |
+| **Steps**            | 1. Set Group By = Project, Rows = Project. 2. Observe Rows value change. 3. Set Rows = Date, Columns = Date. 4. Observe Columns value change.                                             |
+| **Expected outcome** | Step 2: Rows automatically changes to Task (or another non-conflicting option). Step 4: Columns automatically changes to Task (or another option). No duplicate field usage allowed.       |
+| **Actual outcome**   |                                                                                                                                                                                            |
+
+### T112 — Group subtotals and grand total are correct
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | Group subtotals sum all rows in that group; grand total sums all groups.                                                                                                                   |
+| **Preconditions**    | Group By = Project, Rows = Task, Columns = Date. Multiple projects with tasks and entries.                                                                                                 |
+| **Steps**            | 1. Manually sum durations for all tasks in one project for one column. 2. Compare to group subtotal. 3. Sum all group totals. 4. Compare to grand total.                                   |
+| **Expected outcome** | Group subtotal matches manual sum of task durations. Grand total matches sum of all group totals. H:MM format throughout.                                                                  |
+| **Actual outcome**   |                                                                                                                                                                                            |
+
+### T113 — CSV export works with grouped pivot table
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | CSV export flattens grouped data into rows.                                                                                                                                                |
+| **Preconditions**    | Group By = Project, multiple groups visible. Navigate to Reports.                                                                                                                          |
+| **Steps**            | 1. Click "Export CSV". 2. Open downloaded CSV file.                                                                                                                                        |
+| **Expected outcome** | CSV contains all time entries as individual rows (not grouped). Columns: Date, Task, Project, Start, End, Duration, Tags, Comment. No group headers or subtotals in CSV.                   |
+| **Actual outcome**   |                                                                                                                                                                                            |
+
+### T114 — Unchecking "Column Total" hides footer row
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | Unchecking "Column Total" checkbox hides the footer row with column totals.                                                                                                                |
+| **Preconditions**    | Navigate to Reports, Pivot Table with data. "Column Total" is checked (default).                                                                                                           |
+| **Steps**            | 1. Observe footer row with "Total" label and column sums. 2. Uncheck "Column Total". 3. Recheck it.                                                                                       |
+| **Expected outcome** | Initially: footer visible. After unchecking: footer disappears (no border, no totals). After rechecking: footer reappears.                                                                 |
+| **Actual outcome**   |                                                                                                                                                                                            |
+
+### T115 — Unchecking "Group Subtotals" hides subtotal rows
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | Unchecking "Group Subtotals" hides subtotal rows within expanded groups.                                                                                                                   |
+| **Preconditions**    | Group By = Project (or any non-None), groups are expanded. "Group Subtotals" is checked.                                                                                                   |
+| **Steps**            | 1. Observe "Subtotal" rows under each expanded group. 2. Uncheck "Group Subtotals". 3. Recheck it.                                                                                        |
+| **Expected outcome** | Initially: italic "Subtotal" rows visible below each group's task rows. After unchecking: subtotal rows disappear. After rechecking: subtotal rows reappear.                               |
+| **Actual outcome**   |                                                                                                                                                                                            |
+
+### T116 — Unchecking "Row Total" hides rightmost "Total" column
+
+|                      |                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Scenario**         | Unchecking "Row Total" hides the rightmost column showing row totals.                                                                                                                      |
+| **Preconditions**    | Navigate to Reports, Pivot Table with data. "Row Total" is checked (default).                                                                                                              |
+| **Steps**            | 1. Observe rightmost "Total" column in header and all rows. 2. Uncheck "Row Total". 3. Recheck it.                                                                                        |
+| **Expected outcome** | Initially: "Total" header and total cells visible in all rows, group headers, and footer. After unchecking: entire column disappears. After rechecking: column reappears.                  |
 | **Actual outcome**   |                                                                                                                                                                                            |

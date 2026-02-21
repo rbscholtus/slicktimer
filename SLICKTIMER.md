@@ -77,13 +77,13 @@ The demo of the original SlimTimer is here: https://www.youtube.com/watch?v=Ceed
 ### Home page
 
 - **Route**: `/` — public, accessible with or without authentication.
-- **Purpose**: Landing page for slicktimer.com with static information about the app.
+- **Purpose**: Landing page for slicktimer.com with information about the app and getting started instructions.
 - **Layout**: Centered content with `max-w-lg`.
-- **Nav bar (logged out)**: Blue nav bar with "Home" tab (active) and "Login" link at the far right.
-- **Nav bar (logged in)**: Full Nav component — Home (active), Edit Entries, Edit Tasks, Edit Projects, Run Reports + Open Timer, Logout at far right.
-- **"start the clock" link**: In the page body, opens the timer at `/timer` in a slim popup window (`width=300, height=640, resizable=yes`) using `window.open()`. Users can bookmark this link to launch the timer directly.
-- **Marketing copy**: Describes SlickTimer as the spiritual successor to SlimTimer, highlighting Project Folders and Offline Mode.
-- **Auth-aware**: Imports `getUser()` to detect login state and render the appropriate nav bar.
+- **Nav bar (all pages)**: Blue nav bar with SlickTimer logo (icon-192.png, 20px) + "SLICKTIMER" text at the left, followed by tab-style links. Timer popup shows abbreviated "ST" text instead.
+- **Nav bar (logged out)**: Logo + "Home" tab (active) + "Login" link at far right.
+- **Nav bar (logged in)**: Logo + full Nav component — Home, Edit Entries, Edit Tasks, Edit Projects, Run Reports + Open Timer, Logout at far right.
+- **Page content**: Large logo (icon-512.png), tagline ("Zero effort. All the time."), one-liner introduction, 2-column feature grid (Projects, Offline mode, Pomodoro, Drag & drop, Pivot-table reports, Zero-effort timesheets), numbered Getting Started steps (1-5), and a CTA button ("Open Timer" if logged in, "Get Started" if logged out).
+- **Auth-aware**: Imports `getUser()` to detect login state and render the appropriate nav bar and CTA.
 
 ### Timer screen
 
@@ -110,10 +110,16 @@ The demo of the original SlimTimer is here: https://www.youtube.com/watch?v=Ceed
   - Pressing Escape closes the field without saving.
   - When the timer is stopped, the comment field becomes read-only and shows the saved comment, until a new task is started (at which point it resets).
   - **Comment carry-over**: When a task is started, the comment from that task's most recent previous time entry today is fetched asynchronously and pre-populated in the comment field (without blocking the timer start). The user can edit or clear it before saving.
-- **Starting a timer**: Clicking a task immediately starts the timer — local state updates instantly (optimistic UI) and the Firestore write happens in the background. Only one timer can run at a time.
-- **Stopping a timer**: Clicking the currently running task stops its timer instantly (optimistic UI). Clicking a different task stops the current timer and starts a new one, both updating the UI immediately with Firestore writes in the background.
+- **Starting a timer**: Clicking a task generates a Firestore document ID locally (via `doc()`), updates local state immediately so the timer starts ticking, then writes to Firestore as fire-and-forget. This ensures the timer starts instantly even when offline — the Firestore SDK queues the write in IndexedDB and syncs when connectivity returns. A `taskSwitchLock` prevents concurrent `startTask()` calls from rapid clicking. Only one timer can run at a time.
+- **Stopping a timer**: Clicking the currently running task stops its timer. Clicking a different task stops the current timer and starts a new one — the lock serializes these operations to prevent race conditions.
 - **Comment carry-over timing**: The carry-over comment is fetched asynchronously after the timer starts, so the timer is never delayed by the Firestore read. The comment field updates once the fetch completes.
-- **Minimum duration**: If a time entry's duration is less than 10 seconds when stopped, it is discarded and not saved.
+- **Minimum duration**: If a time entry's duration is less than 10 seconds when stopped, `endTime` is written first (so the entry is never left as "running"), then the entry is deleted.
+- **Midnight split**: When a timer is running and midnight occurs, the timer automatically splits the entry into two separate entries:
+  - The entry for the previous day is closed with `endTime` set to 23:59:59.999 and `duration` calculated from start time to midnight.
+  - A new entry is immediately created for the new day starting at 00:00:00, with the same task, project, tags, and comment.
+  - The timer continues ticking seamlessly in the UI with no visible interruption to the user.
+  - This ensures daily totals accurately reflect only the time worked on each calendar day.
+  - The split check happens once per minute (when elapsed seconds is divisible by 60) to minimize overhead while maintaining accuracy within 1 minute of midnight.
 - **Pomodoro mode**: The user can toggle the running timer to pomodoro mode via the hourglass icon button (25-minute countdown). When the countdown reaches zero, a browser notification alerts the user, but the timer continues running until manually stopped. The timer displays overtime as `+H:MM:SS` after the target is exceeded.
 - **Idle notification**: If no timer is running for 15 minutes, a browser notification prompts the user to start timing. Notification permission is requested as soon as the user is authenticated (on first page load after login), so it is available for both idle and pomodoro alerts.
 - **Sharing**: Tasks and projects can be shared with other SlickTimer users:
@@ -137,8 +143,8 @@ The demo of the original SlimTimer is here: https://www.youtube.com/watch?v=Ceed
 ### Tags
 
 - Tags are managed per project (each project has its own tag pool).
-- Tags can be applied to both tasks and time entries.
-- Time entries inherit the tags of their parent task by default. Users can add or remove tags on individual time entries.
+- Tags can be applied to projects, tasks, and time entries.
+- **Tag copying chain**: When a task is created, project tags are copied into the task's tags. When a time entry is created, task tags are copied into the entry's tags. Each level can then edit its own tags independently. This means entries are self-contained — no runtime inheritance lookups needed.
 - Tags are created inline using `#` syntax (e.g., typing `#billable` creates the tag if it doesn't exist).
 - Tags are simple strings, no hierarchy or nesting.
 
@@ -148,8 +154,8 @@ The demo of the original SlimTimer is here: https://www.youtube.com/watch?v=Ceed
 - **Header row**: Three-section layout — "+ New Entry" link (far left), date with prev/next arrows (center), entry count and daily total (far right).
 - **Date navigation**: Previous/next day arrows flank the date label. Defaults to today. The label is locale-aware (respects browser/OS language settings for month/day order). For today, yesterday, and tomorrow it shows a human-friendly label with the short weekday: **"Today · Wed"**, **"Yesterday · Tue"**, **"Tomorrow · Thu"**. All other dates show the full locale-formatted date (e.g. "Wed, Feb 18, 2026" in en-US, or "wo 18 feb 2026" in nl).
 - Shows all time entries for the selected day in chronological order (sorted by `startTime`).
-- **Entry cards**: Each entry is wrapped in a rounded light-blue box (`bg-entry` / `border-entry`), similar to the original SlimTimer. Compact 3-column layout: left column — time range and duration (top-aligned); middle column — small project color dot + task name (bold) + project name on the same line, tags line below, comment below tags; right column — Edit · Delete buttons. All columns are top-aligned. The tags line always shows — if no tags exist anywhere it shows "No tags"; otherwise shows entry-level tags first, then "From Task: #tag" (if any), then "From Project: #tag" (if any), each section separated by " · ". Duplicates are shown in each section where they appear.
-- **Edit**: Each entry has an "Edit" button. Clicking it shows an inline edit form inside the entry card. Editable fields: start time (`input type=time`), end time (`input type=time`), and comment. Duration auto-calculates from start/end. Tags editing will be added later.
+- **Entry cards**: Each entry is wrapped in a rounded light-blue box (`bg-entry` / `border-entry`), similar to the original SlimTimer. Compact 3-column layout: left column — time range and duration (top-aligned); middle column — small project color dot + task name (bold) + project name on the same line, tags line below (if any), comment below tags; right column — Edit · Delete buttons. All columns are top-aligned. Tags are shown as `#tag1 #tag2` — these are the entry's own tags (copied from the task at creation).
+- **Edit**: Each entry has an "Edit" button. Clicking it shows an inline edit form inside the entry card. Editable fields: start time (`input type=time`), end time (`input type=time`), tags (comma-separated, on the same row as time fields), and comment. Duration auto-calculates from start/end.
 - **Delete**: Each entry has a "Delete" button. Clicking it shows an inline "Delete this entry?" confirmation (Yes/No) — no modal. Pressing **Escape** dismisses the confirmation (same as clicking "No").
 - **New entry**: A "+ New Entry" link at the far left of the header opens an inline form (with `bg-edit` background). Fields: task (select from active tasks list, showing task name and project), start time, end time, comment. Tags are inherited from the selected task.
 - **Seconds handling**: New entries save start time with `:00` seconds and end time with `:59` seconds. When editing, if the user changes the start time, it becomes `:00`; if they change the end time, it becomes `:59`. Unchanged fields preserve their original seconds.
@@ -189,13 +195,22 @@ The demo of the original SlimTimer is here: https://www.youtube.com/watch?v=Ceed
 - **Route**: `/reports` — requires authentication.
 - **Report type toggle**: Button group to switch between Pivot Table (default) and Timesheet views.
 - **Report types**:
-  - **Pivot table** (default): User configures what appears on rows and columns via two dropdown selects. Options for rows/columns include: project, task, and date. Cell values show total hours in `H:MM` format. Includes row totals, column totals, and grand total. Zebra-striped rows.
+  - **Pivot table** (default): User configures what appears in Group By, Rows, and Columns via dropdown selects. Cell values show total hours in `H:MM` format. Includes optional row totals, column totals, group subtotals, and grand total. Zebra-striped rows.
   - **Timesheet**: A chronological table of time entries showing time range, task, project, and duration. Tags and comments are shown in a sub-row below entries that have them. Includes a total at the bottom. Zebra-striped rows.
+- **Pivot table configuration**:
+  - **Group By**: None (default), Project, Task, Date, Tags. When set to anything other than "None", rows are grouped hierarchically with expand/collapse functionality. All groups are expanded by default. Group headers show the group name and group subtotals. Clicking a group header toggles expand/collapse.
+  - **Rows**: Project, Task, Date, Time Entry. Cannot be the same as Group By or Columns.
+  - **Columns**: Date (default), Project, Task. Cannot be the same as Group By or Rows.
+  - **Conflict prevention**: When a field is selected in one dimension (Group By, Rows, or Columns), it automatically adjusts the other dimensions if there's a conflict.
+- **Display options**: Checkboxes to toggle visibility of Column Total (footer row), Group Subtotals (subtotal rows within each group), and Row Total (rightmost column). All are enabled by default.
+- **Date formatting**: Column headers and timesheet dates use human-friendly format (e.g., "Sun, Feb 22"). Year is only shown if different from current year.
+- **Week columns**: When Columns = Date and preset is "This Week" or "Last Week", the pivot table shows Mon-Fri columns even if no data exists for some days. Sat/Sun columns are included only if data exists for those days.
 - **Time frame presets**: Today, This Week, Last Week, This Month, Last Month — displayed as a button group. Custom date range shows two date inputs.
-- **Filters**: Project and tag dropdown selects. Default to "All". Filtering is client-side on loaded data.
+- **Filters**: "Filters:" label followed by Project and Tag dropdown selects. Default to "All". Filtering is client-side on loaded data. All dropdowns use larger sizing (`px-2 py-1 min-w-[120px]` or `min-w-[160px]`) to prevent text/arrow overlap.
+- **Tag grouping**: When Group By = Tags, entries with multiple tags appear in multiple groups. Entries with no tags appear in "(No Tags)" group.
 - **Data loading**: Queries `timeEntries` where `date >= startDate && date <= endDate`. Re-queries when date range changes. Tasks and projects are loaded via `useCollection` for name lookups.
 - **Shared data**: Reporters with access to shared tasks/projects can see individual time entries from all users who logged time against those tasks.
-- **Export**: CSV export button generates a CSV file client-side (using Blob URL) and triggers a browser download. Includes columns: Date, Task, Project, Start, End, Duration, Tags, Comment.
+- **Export**: CSV export button generates a CSV file client-side (using Blob URL) and triggers a browser download. Includes columns: Date, Task, Project, Start, End, Duration, Tags, Comment. Grouped pivot tables are flattened in the export.
 
 ## Visual design and styling
 
@@ -341,7 +356,7 @@ Each document ID = auto-generated.
 | ------------- | ----------------- | ------------------------------------------ |
 | `name`        | string            | Task name                                  |
 | `projectId`   | string            | Reference to parent project                |
-| `tags`        | array\<string\>   | Tags applied to this task                  |
+| `tags`        | array\<string\>   | Tags (seeded from project tags at creation, editable) |
 | `status`      | string            | `"active"`, `"completed"`, or `"archived"` |
 | `order`       | number            | Sort order within the project              |
 | `createdAt`   | timestamp         | Creation date                              |
@@ -369,7 +384,7 @@ Each document ID = auto-generated.
 | `startTime` | timestamp         | When the timer started                                                 |
 | `endTime`   | timestamp \| null | When the timer stopped (null while running)                            |
 | `duration`  | number            | Duration in seconds (computed on stop, updated on edit)                |
-| `tags`      | array\<string\>   | Tags (initialized from task tags, editable)                            |
+| `tags`      | array\<string\>   | Tags (copied from task tags at creation, editable per entry)           |
 | `comment`   | string            | Optional one-line comment                                              |
 | `date`      | string            | Date in `YYYY-MM-DD` format (denormalized for date-range queries)      |
 | `createdAt` | timestamp         | Creation date                                                          |
@@ -394,7 +409,7 @@ Each document ID = auto-generated.
 - **Denormalization**: `projectId` and `date` are stored on time entries to enable efficient Firestore queries (Firestore does not support joins).
 - **Shared access**: The `sharedAccess` collection exists so users can query "what has been shared with me?" without scanning all other users' data. When a share is created/removed, both the subcollection share doc and the `sharedAccess` doc are written/deleted in a batch.
 - **Co-worker time entries**: When a co-worker logs time against a shared task, the time entry is stored under the co-worker's own `timeEntries` subcollection, with `taskId` and `projectId` pointing to the owner's task/project. Reports on shared items query across relevant users' time entries.
-- **Offline support**: Firestore's `enablePersistence()` handles offline reads/writes. The app uses Firestore's real-time listeners (`onSnapshot`) so the UI updates automatically when data syncs.
+- **Offline support**: Firestore's `persistentLocalCache` handles offline reads/writes. The app uses real-time listeners (`onSnapshot`) so the UI updates automatically when data syncs. Timer operations (start, stop, switch) use fire-and-forget Firestore writes — document IDs are generated locally via `doc()` so the UI never blocks on network. `serverTimestamp()` sentinels are resolved by the Firestore SDK when connectivity returns.
 
 ## Implementation overview
 
@@ -523,7 +538,7 @@ Design tokens are defined in `src/app.css` using the Tailwind v4 `@theme` direct
 
 Authenticated pages (`/timer`, `/entries`, `/tasks`, `/projects`, `/reports`) live inside a `(app)` route group that shares an auth-guarded layout with the Nav bar. The `(app)` group does not affect URLs.
 
-Navigation is a blue top bar component (`Nav.svelte`) rendered by the `(app)` layout. The Nav links are: Home→`/`, Edit Entries→`/entries`, Edit Tasks→`/tasks`, Edit Projects→`/projects`, Run Reports→`/reports`, with Open Timer and Logout at the far right. The Open Timer button opens `/timer` in a popup window (`width=300, height=640, resizable=yes`). On the timer page, the layout renders a custom nav instead of `Nav.svelte`: **Edit Entries** (opens `/entries` in the main browser window), **Run Reports** (opens `/reports` in the main browser window), and **Logout** at the far right. If the timer was opened via `window.open()`, these links navigate the opener window; otherwise they open a new tab. The Home page (`/`) also renders the Nav component when logged in, or a minimal blue bar with just a Login link when logged out. The root layout (`+layout.svelte`) only imports `app.css` and renders children — no auth logic.
+Navigation is a blue top bar component (`Nav.svelte`) rendered by the `(app)` layout. All nav bars start with the SlickTimer logo (icon-192.png, 20px) and "SLICKTIMER" bold white text at the left. The Nav links follow: Home→`/`, Edit Entries→`/entries`, Edit Tasks→`/tasks`, Edit Projects→`/projects`, Run Reports→`/reports`, with Open Timer and Logout at the far right. The Open Timer button opens `/timer` in a popup window (`width=300, height=640, resizable=yes`). On the timer page, the layout renders a custom nav instead of `Nav.svelte` with an abbreviated "ST" logo text: **Edit Entries** (opens `/entries` in the main browser window), **Run Reports** (opens `/reports` in the main browser window), and **Logout** at the far right. If the timer was opened via `window.open()`, these links navigate the opener window; otherwise they open a new tab. The Home page (`/`) also renders the Nav component when logged in, or a minimal blue bar with logo + Login link when logged out. The root layout (`+layout.svelte`) only imports `app.css` and renders children — no auth logic.
 
 ### Key implementation decisions
 
@@ -550,4 +565,4 @@ Not needed at this stage: Cloud Functions, Firebase Storage, Realtime Database, 
 
 ## Manual testing
 
-See [TESTING.md](TESTING.md) for the full manual test plan.
+See [TESTING.md](TESTING.md) for the full manual test plan (T01–T96).

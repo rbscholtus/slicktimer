@@ -4,7 +4,8 @@ import {
 	initializeFirestore,
 	getFirestore,
 	persistentLocalCache,
-	persistentMultipleTabManager
+	persistentMultipleTabManager,
+	type Firestore
 } from 'firebase/firestore';
 import {
 	PUBLIC_FIREBASE_API_KEY,
@@ -31,7 +32,7 @@ export const auth = getAuth(app);
 
 // initializeFirestore sets up offline persistence. On HMR it throws because
 // Firestore is already initialized — fall back to getFirestore() in that case.
-let db;
+let db: Firestore;
 try {
 	db = initializeFirestore(app, {
 		localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })

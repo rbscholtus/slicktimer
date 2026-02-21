@@ -41,7 +41,7 @@
 	async function submit(startImmediately: boolean) {
 		if (!rawName.trim() || !selectedProjectId) return;
 
-		const { name, tags } = parseNameAndTags(rawName);
+		const { name, tags: userTags } = parseNameAndTags(rawName);
 		if (!name) return;
 
 		// Check for duplicate task name within the selected project (case-insensitive)
@@ -52,6 +52,11 @@
 			error = 'A task with this name already exists in this project.';
 			return;
 		}
+
+		// Merge project tags with user-typed tags (deduplicated)
+		const project = projects.find((p) => p.id === selectedProjectId);
+		const projectTags = project?.tags ?? [];
+		const tags = [...new Set([...projectTags, ...userTags])];
 
 		error = '';
 		const ref = await addDoc(collection(db, `users/${uid}/tasks`), {

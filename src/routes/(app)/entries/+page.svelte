@@ -88,6 +88,7 @@
 	let editStart = $state('');
 	let editEnd = $state('');
 	let editComment = $state('');
+	let editTags = $state('');
 	let editError = $state('');
 	// Track original values to detect changes
 	let editOrigStart = $state('');
@@ -101,6 +102,7 @@
 		editStart = formatTimeHHMM(entry.startTime);
 		editEnd = entry.endTime ? formatTimeHHMM(entry.endTime) : '';
 		editComment = entry.comment || '';
+		editTags = (entry.tags ?? []).join(', ');
 		editError = '';
 		editOrigStart = editStart;
 		editOrigEnd = editEnd;
@@ -141,11 +143,16 @@
 		}
 
 		const ref = doc(db, `users/${uid}/timeEntries`, entry.id);
+		const tags = editTags
+			.split(',')
+			.map((t) => t.trim())
+			.filter((t) => t.length > 0);
 		await updateDoc(ref, {
 			startTime: Timestamp.fromDate(startDate),
 			endTime: endDate ? Timestamp.fromDate(endDate) : null,
 			duration,
 			comment: editComment,
+			tags,
 			updatedAt: Timestamp.now()
 		});
 		editingId = null;
@@ -320,8 +327,9 @@
 		<!-- Right: Entry count and total -->
 		<div class="w-28 text-right">
 			{#if entries.data.length > 0}
-				<span class="whitespace-nowrap text-xs text-text-secondary">
+				<span class="whitespace-nowrap text-sm text-text-secondary">
 					<strong>{entries.data.length}</strong> {entries.data.length === 1 ? 'entry' : 'entries'}
+					<span> · </span>
 					<strong>{formatDurationShort(dailyTotal)}</strong>
 				</span>
 			{/if}
@@ -399,6 +407,12 @@
 									bind:value={editEnd}
 									class="border border-border px-1 py-0.5 text-sm font-mono"
 								/>
+								<input
+									type="text"
+									bind:value={editTags}
+									placeholder="Tags"
+									class="w-24 border border-border px-1 py-0.5 text-sm"
+								/>
 							</div>
 							<input
 								type="text"
@@ -438,6 +452,8 @@
 							</div>
 							<div class="min-w-0">
 								<div class="flex items-center gap-1 text-sm">
+									<span class="font-semibold text-text-primary">{taskMap[entry.taskId]?.name ?? 'Unknown task'}</span>
+									<span class="text-text-secondary"> · </span>
 									{#if projectMap[entry.projectId]?.color}
 										<span
 											class="inline-block h-2 w-2 shrink-0 rounded-sm"
@@ -445,28 +461,11 @@
 										></span>
 									{/if}
 									<span class="text-text-secondary">{projectMap[entry.projectId]?.name ?? 'Unknown project'}</span>
-									<span class="text-text-secondary"> · </span>
-									<span class="font-semibold text-text-primary">{taskMap[entry.taskId]?.name ?? 'Unknown task'}</span>
 								</div>
-								{#if (entry.tags ?? []).length || (taskMap[entry.taskId]?.tags ?? []).length || (projectMap[entry.projectId]?.tags ?? []).length}
-									{@const entryTags = entry.tags ?? []}
-									{@const taskTags = taskMap[entry.taskId]?.tags ?? []}
-									{@const projectTags = projectMap[entry.projectId]?.tags ?? []}
+								{#if (entry.tags ?? []).length > 0}
 									<div class="text-xs text-text-secondary">
-										{#if entryTags.length > 0}
-											{entryTags.map((t) => `#${t}`).join(' ')}
-										{/if}
-										{#if taskTags.length > 0}
-											{#if entryTags.length > 0}<span> · </span>{/if}
-											<span>From Task: {taskTags.map((t) => `#${t}`).join(' ')}</span>
-										{/if}
-										{#if projectTags.length > 0}
-											{#if entryTags.length > 0 || taskTags.length > 0}<span> · </span>{/if}
-											<span>From Project: {projectTags.map((t) => `#${t}`).join(' ')}</span>
-										{/if}
+										{(entry.tags ?? []).map((t) => `#${t}`).join(' ')}
 									</div>
-								{:else}
-									<div class="text-xs text-text-secondary">No tags</div>
 								{/if}
 								{#if entry.comment}
 									<div class="text-xs text-text-secondary italic">"{entry.comment}"</div>

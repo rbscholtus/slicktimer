@@ -17,8 +17,8 @@ export function formatDurationShort(totalSeconds: number): string {
 	return `${minutes}m`;
 }
 
-export function todayDateString(): string {
-	const now = new Date();
+export function todayDateString(timestamp?: number): string {
+	const now = timestamp ? new Date(timestamp) : new Date();
 	const year = now.getFullYear();
 	const month = String(now.getMonth() + 1).padStart(2, '0');
 	const day = String(now.getDate()).padStart(2, '0');

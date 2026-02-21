@@ -8,7 +8,13 @@ service cloud.firestore {
 
       // Projects subcollection
       match /projects/{projectId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        // Allow read if owner OR if user is listed in the shares subcollection
+        allow read: if request.auth != null && (
+          request.auth.uid == userId || 
+          exists(/databases/$(database)/documents/users/$(userId)/projects/$(projectId)/shares/$(request.auth.uid))
+        );
+        // Only owner can write
+        allow write: if request.auth != null && request.auth.uid == userId;
 
         // Project shares
         match /shares/{shareId} {
@@ -18,7 +24,11 @@ service cloud.firestore {
 
       // Tasks subcollection
       match /tasks/{taskId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && (
+          request.auth.uid == userId ||
+          exists(/databases/$(database)/documents/users/$(userId)/tasks/$(taskId)/shares/$(request.auth.uid))
+        );
+        allow write: if request.auth != null && request.auth.uid == userId;
 
         // Task shares
         match /shares/{shareId} {
@@ -28,6 +38,9 @@ service cloud.firestore {
 
       // Time entries subcollection
       match /timeEntries/{entryId} {
+        // Complex: Need to check if the PARENT task or project is shared to allow reading entries?
+        // Or simply rely on the fact that shared reports query specific entries.
+        // For now, strict owner access is safer unless you denormalize 'sharedWith' arrays onto entries.
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
